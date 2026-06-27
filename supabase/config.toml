@@ -1,0 +1,2 @@
+[functions.vacuum-orders]
+verify_jwt = false

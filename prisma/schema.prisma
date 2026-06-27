@@ -1,0 +1,311 @@
+// // prisma/schema.prisma
+// generator client {
+//   provider = "prisma-client-js"
+// }
+
+// datasource db {
+//   provider  = "postgresql"
+//   url       = env("DATABASE_URL")
+//   directUrl = env("DIRECT_URL")
+// }
+
+// model User {
+//   id             String   @id @default(cuid())
+//   createdAt      DateTime @default(now())
+//   updatedAt      DateTime @updatedAt
+//   email          String   @unique
+//   emailVerified  Boolean  @default(false)
+//   name           String?
+//   image          String?
+//   role           String?  @default("USER")
+
+//   // Relations
+//   ownedRestaurants Restaurant[]
+//   carts          Cart[]
+//   orders         Order[]
+//   addresses      Address[]
+//   reviews        Review[]
+//   notifications  Notification[]
+//   deliveryPersonProfile DeliveryPerson? // One-to-one relation to delivery person profile
+//   deliveryOrders Order[] @relation("DeliveryOrders") // Opposite side of deliveryPerson in Order
+//   adminProfile   Admin?  // One-to-one relation to admin profile
+
+//   @@map("users")
+// }
+
+// model Restaurant {
+//   id              String   @id @default(cuid())
+//   createdAt       DateTime @default(now())
+//   updatedAt       DateTime @updatedAt
+//   name            String
+//   description     String?
+//   image           String?
+//   ownerId         String   // Reference to User who owns the restaurant
+//   location        String?
+//   address         String?
+//   phone           String?
+//   email           String?
+//   rating          Float?   @default(0.0)
+//   deliveryTime    Int?     // In minutes
+//   deliveryFee     Float?   @default(0.0)
+//   minimumOrder    Float?   @default(0.0)
+//   isActive        Boolean  @default(true)
+//   isAvailable     Boolean  @default(true)
+
+//   // Relations
+//   owner           User     @relation(fields: [ownerId], references: [id])
+//   menuCategories  MenuCategory[]
+//   menuItems       MenuItem[]
+//   orders          Order[]
+//   reviews         Review[]
+//   carts           Cart[]
+
+//   @@map("restaurants")
+// }
+
+// model MenuCategory {
+//   id            String   @id @default(cuid())
+//   createdAt     DateTime @default(now())
+//   updatedAt     DateTime @updatedAt
+//   name          String
+//   description   String?
+//   image         String?
+//   restaurantId  String
+
+//   // Relations
+//   restaurant    Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+//   menuItems     MenuItem[]
+
+//   @@map("menu_categories")
+// }
+
+// model MenuItem {
+//   id              String   @id @default(cuid())
+//   createdAt       DateTime @default(now())
+//   updatedAt       DateTime @updatedAt
+//   name            String
+//   description     String?
+//   price           Float
+//   image           String?
+//   category        String?
+//   isAvailable     Boolean  @default(true)
+//   preparationTime Int?     // In minutes
+//   restaurantId    String
+//   categoryId      String?  // Reference to MenuCategory
+
+//   // Relations
+//   restaurant      Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+//   categoryRef     MenuCategory? @relation(fields: [categoryId], references: [id], onDelete: SetNull)
+//   orderItems      OrderItem[]
+//   cartItems       CartItem[]
+
+//   @@map("menu_items")
+// }
+
+// model Cart {
+//   id           String   @id @default(cuid())
+//   createdAt    DateTime @default(now())
+//   updatedAt    DateTime @updatedAt
+//   userId       String
+//   restaurantId String
+
+//   // Relations
+//   user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+//   restaurant   Restaurant @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+//   cartItems    CartItem[]
+
+//   @@map("carts")
+// }
+
+// model CartItem {
+//   id         String   @id @default(cuid())
+//   createdAt  DateTime @default(now())
+//   updatedAt  DateTime @updatedAt
+//   cartId     String
+//   menuItemId String
+//   quantity   Int      @default(1)
+//   price      Float    // Price at the time of adding to cart
+
+//   // Relations
+//   cart       Cart     @relation(fields: [cartId], references: [id], onDelete: Cascade)
+//   menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+
+//   @@map("cart_items")
+// }
+
+// model Order {
+//   id               String    @id @default(cuid())
+//   createdAt        DateTime  @default(now())
+//   updatedAt        DateTime  @updatedAt
+//   userId           String
+//   restaurantId     String
+//   orderNumber      String    @unique
+//   status           String    @default("pending") // pending, confirmed, preparing, ready, on_the_way, delivered, cancelled
+//   totalAmount      Float
+//   deliveryAddress  String?
+//   deliveryNotes    String?
+//   paymentMethod    String?   // cash, card, digital_wallet
+//   paymentStatus    String    @default("pending") // pending, paid, failed, refunded
+//   deliveryPersonId String?
+//   estimatedDelivery DateTime?
+//   actualDelivery   DateTime?
+
+//   // Relations
+//   user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+//   restaurant       Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+//   deliveryPerson   User?        @relation("DeliveryOrders", fields: [deliveryPersonId], references: [id])
+//   orderItems       OrderItem[]
+//   payments         Payment[]
+//   review           Review?      @relation(fields: [orderId], references: [id], onDelete: SetNull) // One-to-one relation to review (optional)
+//   deliveryAssignment DeliveryAssignment? // One-to-one relation to delivery assignment
+
+//   @@map("orders")
+// }
+
+// model OrderItem {
+//   id         String   @id @default(cuid())
+//   createdAt  DateTime @default(now())
+//   updatedAt  DateTime @updatedAt
+//   orderId    String
+//   menuItemId String
+//   quantity   Int      @default(1)
+//   price      Float    // Price at the time of ordering
+
+//   // Relations
+//   order      Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+//   menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
+
+//   @@map("order_items")
+// }
+
+// model Address {
+//   id        String   @id @default(cuid())
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+//   userId    String
+//   name      String
+//   street    String
+//   city      String
+//   state     String
+//   zipCode   String
+//   country   String
+//   phone     String
+//   isDefault Boolean  @default(false)
+
+//   // Relations
+//   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+//   @@map("addresses")
+// }
+
+// model Review {
+//   id          String   @id @default(cuid())
+//   createdAt   DateTime @default(now())
+//   updatedAt   DateTime @updatedAt
+//   userId      String
+//   restaurantId String?
+//   orderId     String?    // Reference to Order (one-to-one with Order.review)
+
+//   // Relations
+//   user        User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+//   restaurant  Restaurant? @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+//   order       Order?     @relation(fields: [orderId], references: [id], onDelete: SetNull)
+
+//   @@map("reviews")
+// }
+
+// // Add a unique constraint on Order to reference Review
+// model Order {
+//   id               String    @id @default(cuid())
+//   createdAt        DateTime  @default(now())
+//   updatedAt        DateTime  @updatedAt
+//   userId           String
+//   restaurantId     String
+//   orderNumber      String    @unique
+//   status           String    @default("pending") // pending, confirmed, preparing, ready, on_the_way, delivered, cancelled
+//   totalAmount      Float
+//   deliveryAddress  String?
+//   deliveryNotes    String?
+//   paymentMethod    String?   // cash, card, digital_wallet
+//   paymentStatus    String    @default("pending") // pending, paid, failed, refunded
+//   deliveryPersonId String?
+//   estimatedDelivery DateTime?
+//   actualDelivery   DateTime?
+//   reviewId         String?  @unique // Unique reference to review
+
+//   // Relations
+//   user             User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+//   restaurant       Restaurant   @relation(fields: [restaurantId], references: [id], onDelete: Cascade)
+//   deliveryPerson   User?        @relation("DeliveryOrders", fields: [deliveryPersonId], references: [id])
+//   orderItems       OrderItem[]
+//   payments         Payment[]
+//   review           Review?      @relation(fields: [reviewId], references: [id], onDelete: SetNull) // One-to-one relation to review (optional)
+//   deliveryAssignment DeliveryAssignment? // One-to-one relation to delivery assignment
+
+//   @@map("orders")
+// }
+
+// model Payment {
+//   id              String   @id @default(cuid())
+//   createdAt       DateTime @default(now())
+//   updatedAt       DateTime @updatedAt
+//   orderId         String
+//   amount          Float
+//   method          String   // cash, card, digital_wallet
+//   status          String   @default("pending") // pending, paid, failed, refunded
+//   transactionId   String?
+//   gatewayResponse Json?
+
+//   // Relations
+//   order           Order    @relation(fields: [orderId], references: [id], onDelete: Cascade)
+
+//   @@map("payments")
+// }
+
+// model DeliveryPerson {
+//   id            String   @id @default(cuid())
+//   createdAt     DateTime @default(now())
+//   updatedAt     DateTime @updatedAt
+//   userId        String   @unique // Reference to User - must be unique for one-to-one relation
+//   licensePlate  String?
+//   vehicleType   String?  // bike, car, motorcycle
+//   isAvailable   Boolean  @default(true)
+//   currentLocation Json?
+//   rating        Float?   @default(0.0)
+
+//   // Relations
+//   user          User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+//   assignedOrders Order[]  @relation("DeliveryOrders")
+
+//   @@map("delivery_persons")
+// }
+
+// model Admin {
+//   id        String   @id @default(cuid())
+//   createdAt DateTime @default(now())
+//   updatedAt DateTime @updatedAt
+//   userId    String   @unique // Reference to User - must be unique for one-to-one relation
+//   role      String   @default("admin") // admin, super_admin, manager
+
+//   // Relations
+//   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+//   @@map("admins")
+// }
+
+// model Notification {
+//   id          String   @id @default(cuid())
+//   createdAt   DateTime @default(now())
+//   updatedAt   DateTime @updatedAt
+//   userId      String
+//   title       String
+//   message     String
+//   type        String   // order_update, promotion, system
+//   isRead      Boolean  @default(false)
+//   data        Json?
+
+//   // Relations
+//   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+//   @@map("notifications")
+// }

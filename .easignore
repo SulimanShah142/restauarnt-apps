@@ -1,0 +1,70 @@
+# Root .easignore - ONLY for root-level files
+# Each app directory has its own .easignore for app-specific exclusions
+
+# Root node_modules (if any)
+node_modules/
+
+# Root build artifacts
+.expo/
+.expo-shared/
+.cache/
+
+# Root documentation
+*.md
+!CLEANUP_COMPLETE.md
+
+# Root scripts (keep build scripts)
+cleanup-files.ps1
+fast-cleanup.bat
+comment-out-console-logs.ps1
+
+# Root database files
+*.db
+*.sqlite
+*.sqlite3
+
+# Root log files
+*.log
+
+# Root IDE files
+.idea/
+.vscode/
+
+# Root environment files
+.env
+.env.local
+.env.*
+
+# Root temporary files
+tmp/
+temp/
+
+# Root image caches
+image_cache/
+ImageCache/
+FileSystem/
+
+# Root downloaded files
+downloads/
+*.apk
+*.aab
+*.ipa
+
+# Root SQL files (keep migrations)
+*.sql
+!migrations/
+!functions/
+
+# Exclude all app build directories (prevent cross-contamination)
+userapp/android/
+userapp/ios/
+deliverapp/android/
+deliverapp/ios/
+admins-app/android/
+admins-app/ios/
+
+# IMPORTANT: DO NOT exclude app directories here!
+# Each app directory should be built independently
+# Run: cd userapp && eas build...
+# Run: cd admins-app && eas build...
+# Run: cd deliverapp && eas build...

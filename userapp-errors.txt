@@ -1,0 +1,177 @@
+app/(tabs)/checkout.tsx(451,16): error TS1005: ';' expected.
+app/(tabs)/checkout.tsx(452,14): error TS1005: ';' expected.
+app/(tabs)/checkout.tsx(453,8): error TS1128: Declaration or statement expected.
+app/(tabs)/checkout.tsx(482,22): error TS1005: ';' expected.
+app/(tabs)/checkout.tsx(483,17): error TS1005: ';' expected.
+app/(tabs)/checkout.tsx(484,22): error TS1005: ';' expected.
+app/(tabs)/checkout.tsx(485,21): error TS1005: ';' expected.
+app/(tabs)/checkout.tsx(486,15): error TS1005: ';' expected.
+app/(tabs)/checkout.tsx(487,25): error TS1005: ';' expected.
+app/(tabs)/checkout.tsx(488,23): error TS1005: ';' expected.
+app/(tabs)/checkout.tsx(489,23): error TS1005: ';' expected.
+app/(tabs)/checkout.tsx(490,23): error TS1005: ';' expected.
+app/(tabs)/checkout.tsx(491,8): error TS1472: 'catch' or 'finally' expected.
+app/(tabs)/checkout.tsx(677,21): error TS1005: ';' expected.
+app/(tabs)/checkout.tsx(678,25): error TS1005: ';' expected.
+app/(tabs)/checkout.tsx(679,21): error TS1005: ';' expected.
+app/(tabs)/checkout.tsx(680,18): error TS1005: ';' expected.
+app/(tabs)/checkout.tsx(681,22): error TS1005: ';' expected.
+app/(tabs)/checkout.tsx(682,32): error TS1005: ';' expected.
+app/(tabs)/checkout.tsx(704,10): error TS1128: Declaration or statement expected.
+app/(tabs)/checkout.tsx(859,5): error TS1128: Declaration or statement expected.
+app/(tabs)/checkout.tsx(859,7): error TS1005: 'try' expected.
+app/(tabs)/checkout.tsx(871,3): error TS1128: Declaration or statement expected.
+app/(tabs)/checkout.tsx(1159,1): error TS1128: Declaration or statement expected.
+app/(tabs)/feedback.tsx(87,16): error TS1005: ';' expected.
+app/(tabs)/feedback.tsx(88,15): error TS1005: ';' expected.
+app/(tabs)/feedback.tsx(89,15): error TS1005: ';' expected.
+app/(tabs)/feedback.tsx(90,8): error TS1472: 'catch' or 'finally' expected.
+app/(tabs)/feedback.tsx(133,7): error TS1005: ',' expected.
+app/(tabs)/feedback.tsx(294,1): error TS1128: Declaration or statement expected.
+app/(tabs)/order.tsx(356,15): error TS1005: ';' expected.
+app/(tabs)/order.tsx(357,17): error TS1005: ';' expected.
+app/(tabs)/order.tsx(358,5): error TS1109: Expression expected.
+app/(tabs)/order.tsx(358,6): error TS1005: ',' expected.
+app/(tabs)/order.tsx(568,1): error TS1128: Declaration or statement expected.
+app/(tabs)/user-orders.tsx(26,13): error TS1005: ';' expected.
+app/(tabs)/user-orders.tsx(28,5): error TS1109: Expression expected.
+app/(tabs)/user-orders.tsx(37,4): error TS1128: Declaration or statement expected.
+app/(tabs)/user-orders.tsx(37,36): error TS1005: ';' expected.
+app/(tabs)/user-orders.tsx(323,1): error TS1128: Declaration or statement expected.
+app/auth-check.tsx(21,26): error TS1005: ';' expected.
+app/auth-check.tsx(36,6): error TS1128: Declaration or statement expected.
+app/auth-check.tsx(36,36): error TS1005: ';' expected.
+app/auth-check.tsx(54,1): error TS1128: Declaration or statement expected.
+components/sheet/UserSheet.tsx(22,11): error TS1005: ';' expected.
+components/sheet/UserSheet.tsx(48,22): error TS1005: ',' expected.
+components/sheet/UserSheet.tsx(48,64): error TS1005: ',' expected.
+components/sheet/UserSheet.tsx(209,1): error TS1128: Declaration or statement expected.
+components/UnifiedMap.ios.tsx(92,13): error TS1005: ';' expected.
+components/UnifiedMap.ios.tsx(93,17): error TS1005: ';' expected.
+components/UnifiedMap.ios.tsx(94,11): error TS1005: ';' expected.
+components/UnifiedMap.ios.tsx(95,18): error TS1005: ';' expected.
+components/UnifiedMap.ios.tsx(96,5): error TS1109: Expression expected.
+components/UnifiedMap.ios.tsx(97,4): error TS1128: Declaration or statement expected.
+components/UnifiedMap.ios.tsx(97,105): error TS1005: ';' expected.
+components/UnifiedMap.ios.tsx(710,1): error TS1128: Declaration or statement expected.
+contexts/AuthContext.tsx(58,15): error TS1005: ';' expected.
+contexts/AuthContext.tsx(59,26): error TS1005: ';' expected.
+contexts/AuthContext.tsx(60,10): error TS1472: 'catch' or 'finally' expected.
+contexts/AuthContext.tsx(61,9): error TS1005: 'try' expected.
+contexts/AuthContext.tsx(66,5): error TS1128: Declaration or statement expected.
+contexts/AuthContext.tsx(98,13): error TS1005: ';' expected.
+contexts/AuthContext.tsx(99,24): error TS1005: ';' expected.
+contexts/AuthContext.tsx(101,5): error TS1128: Declaration or statement expected.
+contexts/AuthContext.tsx(101,6): error TS1128: Declaration or statement expected.
+contexts/AuthContext.tsx(104,3): error TS1128: Declaration or statement expected.
+contexts/AuthContext.tsx(104,4): error TS1128: Declaration or statement expected.
+contexts/AuthContext.tsx(104,8): error TS1005: ';' expected.
+contexts/AuthContext.tsx(116,1): error TS1128: Declaration or statement expected.
+hooks/useLocationTracking.ts(92,14): error TS1005: ';' expected.
+hooks/useLocationTracking.ts(93,19): error TS1005: ';' expected.
+hooks/useLocationTracking.ts(94,9): error TS1109: Expression expected.
+hooks/useLocationTracking.ts(94,10): error TS1128: Declaration or statement expected.
+hooks/useLocationTracking.ts(104,9): error TS1472: 'catch' or 'finally' expected.
+hooks/useLocationTracking.ts(110,7): error TS1005: ',' expected.
+hooks/useLocationTracking.ts(252,20): error TS1005: ';' expected.
+hooks/useLocationTracking.ts(253,15): error TS1109: Expression expected.
+hooks/useLocationTracking.ts(253,16): error TS1128: Declaration or statement expected.
+hooks/useLocationTracking.ts(264,11): error TS1472: 'catch' or 'finally' expected.
+hooks/useLocationTracking.ts(265,9): error TS1128: Declaration or statement expected.
+hooks/useLocationTracking.ts(267,7): error TS1128: Declaration or statement expected.
+hooks/useLocationTracking.ts(267,9): error TS1005: 'try' expected.
+hooks/useLocationTracking.ts(279,5): error TS1128: Declaration or statement expected.
+hooks/useLocationTracking.ts(303,3): error TS1128: Declaration or statement expected.
+hooks/useLocationTracking.ts(303,4): error TS1128: Declaration or statement expected.
+hooks/useLocationTracking.ts(303,76): error TS1005: ';' expected.
+hooks/useLocationTracking.ts(313,1): error TS1128: Declaration or statement expected.
+lib/background-location.ts(50,20): error TS1005: ';' expected.
+lib/background-location.ts(51,19): error TS1005: ';' expected.
+lib/background-location.ts(52,20): error TS1005: ';' expected.
+lib/background-location.ts(53,9): error TS1109: Expression expected.
+lib/background-location.ts(53,10): error TS1128: Declaration or statement expected.
+lib/background-location.ts(67,5): error TS1128: Declaration or statement expected.
+lib/background-location.ts(67,7): error TS1005: 'try' expected.
+lib/background-location.ts(70,3): error TS1128: Declaration or statement expected.
+lib/background-location.ts(70,4): error TS1128: Declaration or statement expected.
+lib/background-location.ts(73,1): error TS1128: Declaration or statement expected.
+lib/background-location.ts(95,5): error TS1109: Expression expected.
+lib/background-location.ts(95,6): error TS1472: 'catch' or 'finally' expected.
+lib/background-location.ts(137,5): error TS1005: ',' expected.
+lib/background-location.ts(140,1): error TS1128: Declaration or statement expected.
+lib/geocoding-service.ts(69,5): error TS1128: Declaration or statement expected.
+lib/geocoding-service.ts(103,3): error TS1128: Declaration or statement expected.
+lib/geocoding-service.ts(103,5): error TS1005: 'try' expected.
+lib/geocoding-service.ts(109,1): error TS1128: Declaration or statement expected.
+lib/geocoding-service.ts(149,10): error TS1005: ';' expected.
+lib/geocoding-service.ts(150,11): error TS1005: ';' expected.
+lib/geocoding-service.ts(151,20): error TS1005: ';' expected.
+lib/geocoding-service.ts(155,6): error TS1472: 'catch' or 'finally' expected.
+lib/geocoding-service.ts(155,7): error TS1128: Declaration or statement expected.
+lib/geocoding-service.ts(155,8): error TS1128: Declaration or statement expected.
+lib/geocoding-service.ts(173,13): error TS1005: ';' expected.
+lib/geocoding-service.ts(177,6): error TS1005: ',' expected.
+lib/geocoding-service.ts(189,16): error TS1005: ';' expected.
+lib/geocoding-service.ts(190,19): error TS1005: ';' expected.
+lib/geocoding-service.ts(191,22): error TS1005: ';' expected.
+lib/geocoding-service.ts(195,5): error TS1128: Declaration or statement expected.
+lib/geocoding-service.ts(195,6): error TS1128: Declaration or statement expected.
+lib/geocoding-service.ts(203,3): error TS1128: Declaration or statement expected.
+lib/geocoding-service.ts(203,5): error TS1005: 'try' expected.
+lib/geocoding-service.ts(209,1): error TS1128: Declaration or statement expected.
+lib/geocoding-service.ts(238,16): error TS1005: ';' expected.
+lib/geocoding-service.ts(239,19): error TS1005: ';' expected.
+lib/geocoding-service.ts(240,22): error TS1005: ';' expected.
+lib/geocoding-service.ts(244,6): error TS1472: 'catch' or 'finally' expected.
+lib/geocoding-service.ts(251,5): error TS1005: ',' expected.
+lib/geocoding-service.ts(255,1): error TS1128: Declaration or statement expected.
+lib/LocationService.ts(97,12): error TS1005: ';' expected.
+lib/LocationService.ts(98,6): error TS1472: 'catch' or 'finally' expected.
+lib/LocationService.ts(112,11): error TS1005: ';' expected.
+lib/LocationService.ts(113,14): error TS1005: ';' expected.
+lib/LocationService.ts(114,15): error TS1005: ';' expected.
+lib/LocationService.ts(115,16): error TS1005: ';' expected.
+lib/LocationService.ts(116,6): error TS1005: ',' expected.
+lib/LocationService.ts(248,3): error TS1128: Declaration or statement expected.
+lib/LocationService.ts(248,5): error TS1005: 'try' expected.
+lib/LocationService.ts(253,1): error TS1128: Declaration or statement expected.
+lib/order-service.ts(278,21): error TS1005: ';' expected.
+lib/order-service.ts(279,26): error TS1005: ';' expected.
+lib/order-service.ts(280,23): error TS1005: ';' expected.
+lib/order-service.ts(281,22): error TS1005: ';' expected.
+lib/order-service.ts(282,22): error TS1005: ';' expected.
+lib/order-service.ts(283,8): error TS1472: 'catch' or 'finally' expected.
+lib/order-service.ts(303,21): error TS1005: ';' expected.
+lib/order-service.ts(304,23): error TS1005: ';' expected.
+lib/order-service.ts(305,28): error TS1005: ';' expected.
+lib/order-service.ts(306,14): error TS1005: ';' expected.
+lib/order-service.ts(307,17): error TS1005: ';' expected.
+lib/order-service.ts(308,20): error TS1005: ';' expected.
+lib/order-service.ts(309,21): error TS1005: ';' expected.
+lib/order-service.ts(310,8): error TS1005: ',' expected.
+lib/order-service.ts(310,9): error TS1136: Property assignment expected.
+lib/order-service.ts(310,10): error TS1136: Property assignment expected.
+lib/order-service.ts(310,11): error TS1136: Property assignment expected.
+lib/order-service.ts(340,5): error TS1128: Declaration or statement expected.
+lib/order-service.ts(340,7): error TS1005: 'try' expected.
+lib/order-service.ts(344,3): error TS1128: Declaration or statement expected.
+lib/order-service.ts(344,4): error TS1128: Declaration or statement expected.
+lib/order-service.ts(462,25): error TS1005: ';' expected.
+lib/order-service.ts(463,22): error TS1005: ';' expected.
+lib/order-service.ts(464,17): error TS1005: ',' expected.
+lib/order-service.ts(465,22): error TS1005: ':' expected.
+lib/order-service.ts(475,16): error TS1005: ',' expected.
+lib/order-service.ts(476,14): error TS1005: ';' expected.
+lib/order-service.ts(477,11): error TS1005: ',' expected.
+lib/order-service.ts(477,12): error TS1472: 'catch' or 'finally' expected.
+lib/order-service.ts(478,10): error TS1005: ';' expected.
+lib/order-service.ts(479,7): error TS1128: Declaration or statement expected.
+lib/order-service.ts(483,5): error TS1128: Declaration or statement expected.
+lib/order-service.ts(483,7): error TS1005: 'try' expected.
+lib/order-service.ts(487,3): error TS1128: Declaration or statement expected.
+lib/order-service.ts(487,4): error TS1128: Declaration or statement expected.
+lib/order-service.ts(521,14): error TS1005: ';' expected.
+lib/order-service.ts(539,1): error TS1128: Declaration or statement expected.
+lib/supabase.ts(33,8): error TS1005: ';' expected.
+lib/supabase.ts(34,4): error TS1005: ',' expected.
+lib/supabase.ts(37,1): error TS1128: Declaration or statement expected.

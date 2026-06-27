@@ -1,0 +1,154 @@
+app/(tabs)/tracking.tsx(51,6): error TS1128: Declaration or statement expected.
+app/(tabs)/tracking.tsx(423,4): error TS1005: '}' expected.
+app/_layout.tsx(110,5): error TS1472: 'catch' or 'finally' expected.
+app/admin/categories.tsx(154,7): error TS1472: 'catch' or 'finally' expected.
+app/admin/dashboard.tsx(98,3): error TS1472: 'catch' or 'finally' expected.
+app/admin/dashboard.tsx(164,3): error TS1472: 'catch' or 'finally' expected.
+app/admin/delivery-personnel.tsx(326,7): error TS1005: 'try' expected.
+app/admin/delivery-personnel.tsx(341,4): error TS1472: 'catch' or 'finally' expected.
+app/admin/delivery-personnel.tsx(551,7): error TS1005: 'try' expected.
+app/admin/delivery-personnel.tsx(557,4): error TS1472: 'catch' or 'finally' expected.
+app/admin/delivery-personnel.tsx(1449,2): error TS1005: '}' expected.
+app/admin/login.tsx(100,7): error TS1005: 'try' expected.
+app/admin/login.tsx(104,4): error TS1472: 'catch' or 'finally' expected.
+app/admin/login.tsx(338,1): error TS1005: '}' expected.
+app/admin/menu-items.tsx(103,3): error TS1472: 'catch' or 'finally' expected.
+app/admin/menu-items.tsx(208,7): error TS1005: 'try' expected.
+app/admin/menu-items.tsx(608,1): error TS1472: 'catch' or 'finally' expected.
+app/admin/menu-items.tsx(1007,2): error TS1005: '}' expected.
+app/admin/orders.tsx(108,4): error TS1128: Declaration or statement expected.
+app/admin/orders.tsx(108,106): error TS1005: ';' expected.
+app/admin/orders.tsx(379,7): error TS1005: ',' expected.
+app/admin/orders.tsx(413,3): error TS1472: 'catch' or 'finally' expected.
+app/admin/orders.tsx(501,11): error TS1472: 'catch' or 'finally' expected.
+app/admin/orders.tsx(530,11): error TS1472: 'catch' or 'finally' expected.
+app/admin/orders.tsx(534,7): error TS1128: Declaration or statement expected.
+app/admin/orders.tsx(544,7): error TS1128: Declaration or statement expected.
+app/admin/orders.tsx(1801,1): error TS1005: '}' expected.
+components/NotificationPermissionPrompt.tsx(223,1): error TS1005: '}' expected.
+components/sheet/UserSheet.tsx(439,26): error TS1005: '}' expected.
+components/UnifiedMap.ios.tsx(697,17): error TS1136: Property assignment expected.
+components/UnifiedMap.ios.tsx(697,20): error TS1005: ';' expected.
+components/UnifiedMap.ios.tsx(697,21): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/UnifiedMap.ios.tsx(698,20): error TS1136: Property assignment expected.
+components/UnifiedMap.ios.tsx(698,23): error TS1005: '}' expected.
+components/UnifiedMap.ios.tsx(698,24): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/UnifiedMap.ios.tsx(699,7): error TS1161: Unterminated regular expression literal.
+components/UnifiedMap.ios.tsx(701,7): error TS1005: '}' expected.
+components/UnifiedMap.tsx(557,17): error TS1136: Property assignment expected.
+components/UnifiedMap.tsx(557,20): error TS1005: ';' expected.
+components/UnifiedMap.tsx(557,21): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/UnifiedMap.tsx(558,20): error TS1136: Property assignment expected.
+components/UnifiedMap.tsx(558,23): error TS1005: '}' expected.
+components/UnifiedMap.tsx(558,24): error TS1382: Unexpected token. Did you mean `{'>'}` or `&gt;`?
+components/UnifiedMap.tsx(559,7): error TS1161: Unterminated regular expression literal.
+components/UnifiedMap.tsx(561,7): error TS1005: '}' expected.
+components/UnifiedMap.tsx(579,1): error TS1005: ',' expected.
+components/UnifiedMap.tsx(604,1): error TS1005: '}' expected.
+components/UnifiedMap.web.tsx(96,5): error TS1472: 'catch' or 'finally' expected.
+contexts/DatabaseContext.tsx(81,3): error TS1472: 'catch' or 'finally' expected.
+contexts/GlobalNotificationContext.tsx(86,5): error TS1472: 'catch' or 'finally' expected.
+database.ts(69,1): error TS1005: '}' expected.
+db/index.native.ts(941,5): error TS1472: 'catch' or 'finally' expected.
+db/index.native.ts(958,7): error TS1472: 'catch' or 'finally' expected.
+db/index.native.ts(967,5): error TS1472: 'catch' or 'finally' expected.
+db/index.native.ts(970,10): error TS1005: ';' expected.
+db/index.native.ts(984,18): error TS1005: ';' expected.
+db/index.native.ts(994,13): error TS1005: ';' expected.
+db/index.native.ts(1004,2): error TS1005: ',' expected.
+db/index.native.ts(1005,1): error TS1005: '}' expected.
+db/index.web.ts(117,4): error TS1005: ';' expected.
+db/index.web.ts(167,6): error TS1005: ';' expected.
+db/index.web.ts(1107,13): error TS1472: 'catch' or 'finally' expected.
+db/index.web.ts(1114,13): error TS1472: 'catch' or 'finally' expected.
+db/index.web.ts(1121,13): error TS1472: 'catch' or 'finally' expected.
+db/index.web.ts(1148,13): error TS1472: 'catch' or 'finally' expected.
+db/index.web.ts(1174,13): error TS1472: 'catch' or 'finally' expected.
+db/index.web.ts(1215,13): error TS1472: 'catch' or 'finally' expected.
+db/index.web.ts(1240,6): error TS1128: Declaration or statement expected.
+db/index.web.ts(1256,18): error TS1005: ';' expected.
+db/index.web.ts(1261,13): error TS1005: ';' expected.
+db/index.web.ts(1268,21): error TS1005: ';' expected.
+db/index.web.ts(1269,21): error TS1005: ';' expected.
+db/index.web.ts(1270,16): error TS1005: ';' expected.
+db/index.web.ts(1273,17): error TS1005: ';' expected.
+db/index.web.ts(1335,1): error TS1005: '}' expected.
+db/sync-incremental-web.ts(254,1): error TS1005: '}' expected.
+hooks/useAdminNotificationListener.ts(69,9): error TS1472: 'catch' or 'finally' expected.
+hooks/useAdminNotificationListener.ts(115,11): error TS1472: 'catch' or 'finally' expected.
+hooks/useAdminNotificationListener.ts(169,9): error TS1472: 'catch' or 'finally' expected.
+hooks/useAdminNotificationListener.ts(191,1): error TS1005: '}' expected.
+hooks/useAdminPushToken.ts(139,1): error TS1005: ')' expected.
+hooks/useDeliveryLocationListener.ts(179,9): error TS1005: 'try' expected.
+hooks/useDeliveryLocationListener.ts(237,1): error TS1005: '}' expected.
+hooks/useGetAdminPushToken.ts(83,7): error TS1005: 'try' expected.
+hooks/useGetAdminPushToken.ts(95,3): error TS1472: 'catch' or 'finally' expected.
+hooks/useGetAdminPushToken.ts(131,1): error TS1005: '}' expected.
+hooks/useLocationTracking.ts(97,7): error TS1005: 'try' expected.
+hooks/useLocationTracking.ts(281,1): error TS1005: '}' expected.
+hooks/useRegisterAdminPushToken.ts(84,5): error TS1005: 'try' expected.
+hooks/useRegisterAdminPushToken.ts(88,1): error TS1005: '}' expected.
+hooks/useRegisterPushToken.ts(73,5): error TS1005: 'try' expected.
+hooks/useRegisterPushToken.ts(77,1): error TS1472: 'catch' or 'finally' expected.
+lib/admin-auth.ts(124,1): error TS1472: 'catch' or 'finally' expected.
+lib/admin-auth.ts(181,2): error TS1472: 'catch' or 'finally' expected.
+lib/admin-auth.ts(181,3): error TS1005: '}' expected.
+lib/background-location.ts(116,2): error TS1472: 'catch' or 'finally' expected.
+lib/background-location.ts(203,1): error TS1005: '}' expected.
+lib/database-manager.ts(44,3): error TS1472: 'catch' or 'finally' expected.
+lib/database-manager.ts(59,3): error TS1128: Declaration or statement expected.
+lib/deleteRecord.ts(76,5): error TS1005: 'try' expected.
+lib/deleteRecord.ts(82,3): error TS1005: '}' expected.
+lib/fcm-server.ts(33,5): error TS1005: 'try' expected.
+lib/fcm-server.ts(40,1): error TS1472: 'catch' or 'finally' expected.
+lib/fcm-server.ts(239,1): error TS1005: '}' expected.
+lib/GeocodingService.ts(378,1): error TS1005: '}' expected.
+lib/image-storage-utils.ts(158,1): error TS1005: '}' expected.
+lib/image-storage.ts(97,7): error TS1005: 'try' expected.
+lib/image-storage.ts(116,4): error TS1128: Declaration or statement expected.
+lib/image-storage.ts(148,23): error TS1005: ';' expected.
+lib/image-storage.ts(165,15): error TS1005: ';' expected.
+lib/image-storage.ts(183,2): error TS1472: 'catch' or 'finally' expected.
+lib/image-storage.ts(183,3): error TS1005: '}' expected.
+lib/image-sync-helper.ts(20,3): error TS1472: 'catch' or 'finally' expected.
+lib/image-sync-helper.ts(28,3): error TS1472: 'catch' or 'finally' expected.
+lib/image-sync-helper.ts(36,3): error TS1472: 'catch' or 'finally' expected.
+lib/image-sync-helper.ts(52,3): error TS1472: 'catch' or 'finally' expected.
+lib/image-sync-helper.ts(68,3): error TS1472: 'catch' or 'finally' expected.
+lib/local-db-service.ts(31,1): error TS1472: 'catch' or 'finally' expected.
+lib/local-db-service.ts(295,6): error TS1472: 'catch' or 'finally' expected.
+lib/local-db-service.ts(307,3): error TS1109: Expression expected.
+lib/local-db-service.ts(361,2): error TS1005: ',' expected.
+lib/local-db-service.ts(362,1): error TS1005: '}' expected.
+lib/LocationService.ts(70,9): error TS1128: Declaration or statement expected.
+lib/LocationService.ts(84,5): error TS1005: 'try' expected.
+lib/LocationService.ts(89,2): error TS1472: 'catch' or 'finally' expected.
+lib/LocationService.ts(89,3): error TS1005: '}' expected.
+lib/notification-emitter.ts(31,3): error TS1472: 'catch' or 'finally' expected.
+lib/notification-service.ts(77,1): error TS1472: 'catch' or 'finally' expected.
+lib/notification-service.ts(310,1): error TS1472: 'catch' or 'finally' expected.
+lib/notification-service.ts(488,9): error TS1005: ',' expected.
+lib/notification-service.ts(493,5): error TS1472: 'catch' or 'finally' expected.
+lib/notification-service.ts(494,5): error TS1005: 'try' expected.
+lib/notification-service.ts(501,1): error TS1472: 'catch' or 'finally' expected.
+lib/notification-service.ts(542,1): error TS1005: '}' expected.
+lib/push-notification-service.ts(97,5): error TS1005: 'try' expected.
+lib/push-notification-service.ts(107,1): error TS1472: 'catch' or 'finally' expected.
+lib/push-notification-service.ts(289,1): error TS1005: '}' expected.
+lib/realtime-notification-listener.ts(47,7): error TS1128: Declaration or statement expected.
+lib/realtime-notification-listener.ts(101,1): error TS1472: 'catch' or 'finally' expected.
+sync-utils.ts(196,1): error TS1472: 'catch' or 'finally' expected.
+sync-utils.ts(955,7): error TS1472: 'catch' or 'finally' expected.
+sync-utils.ts(967,5): error TS1472: 'catch' or 'finally' expected.
+sync-utils.ts(982,2): error TS1472: 'catch' or 'finally' expected.
+sync-utils.ts(1107,1): error TS1005: '}' expected.
+utils/image-base64-utils.ts(330,2): error TS1472: 'catch' or 'finally' expected.
+utils/image-base64-utils.ts(340,1): error TS1005: '}' expected.
+utils/image-cache.ts(169,2): error TS1472: 'catch' or 'finally' expected.
+utils/image-cache.ts(208,1): error TS1005: '}' expected.
+utils/onesignal.ts(34,5): error TS1128: Declaration or statement expected.
+utils/onesignal.ts(34,6): error TS1005: 'try' expected.
+utils/onesignal.ts(34,12): error TS1003: Identifier expected.
+utils/onesignal.ts(36,6): error TS1005: ';' expected.
+utils/onesignal.ts(106,1): error TS1472: 'catch' or 'finally' expected.
+utils/onesignal.ts(138,1): error TS1005: '}' expected.

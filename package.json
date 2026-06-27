@@ -1,0 +1,32 @@
+{
+  "name": "restaurant-app-database",
+  "version": "1.0.0",
+  "description": "Shared SQLite database for restaurant app with offline functionality",
+  "main": "DatabaseModule.js",
+  "scripts": {
+    "init-db": "node init_database.js",
+    "example": "node example_usage.js",
+    "test": "node test_database.js"
+  },
+  "dependencies": {
+    "sqlite3": "^5.1.6",
+    "uuid": "^13.0.0"
+  },
+  "keywords": [
+    "restaurant",
+    "app",
+    "sqlite",
+    "database",
+    "offline",
+    "shared"
+  ],
+  "author": "Restaurant App Team",
+  "license": "MIT",
+  "directories": {
+    "lib": "lib"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "type": "commonjs"
+}
