@@ -1,0 +1,49 @@
+name: iOS Production Cloud Build
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Setup EAS CLI
+        run: npm install -g eas-cli@latest
+
+      - name: Install Project Dependencies
+        run: npm install
+
+      - name: Generate Local Apple Key File
+        env:
+          APPLE_API_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_API_KEY }}
+        run: |
+          # Safely write the key content to the physical file without syntax breaks
+          echo "$APPLE_API_KEY_CONTENT" > AuthKey_XBMFYN6T94.p8
+          
+          # Quick verification to make sure file is created correctly
+          if [ ! -s AuthKey_XBMFYN6T94.p8 ]; then
+            echo "Error: The Apple API Key file is empty!"
+            exit 1
+          fi
+
+      - name: Trigger Remote EAS Cloud Build
+        env:
+          EXPO_TOKEN: ${{ secrets.EXPO_TOKEN }}
+          EAS_NO_VCS: '1'
+          APP_STORE_CONNECT_API_KEY_PATH: ./AuthKey_XBMFYN6T94.p8
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          EXPO_ASC_API_KEY_PATH: ./AuthKey_XBMFYN6T94.p8
+          EXPO_ASC_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          EXPO_ASC_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+        run: eas build --platform ios --profile production --auto-submit --non-interactive 

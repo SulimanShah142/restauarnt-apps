@@ -1,0 +1,822 @@
+import React, { useState, useEffect, useMemo } from 'react';
+import { View, Text, StyleSheet, TouchableOpacity, FlatList, Alert, ActivityIndicator, Modal, TextInput, Image, ScrollView, Linking, Platform } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAdminAuth } from '@/contexts/AdminAuthContext';
+import { supabase } from '@/lib/supabase';
+import { adminApiService } from '@/lib/admin-api-service';
+import NotificationPermissionPrompt from '@/components/NotificationPermissionPrompt';
+import DatePicker from '@/components/DatePicker';
+import UnifiedMap from '@/components/UnifiedMap';
+import { Ionicons } from '@expo/vector-icons';
+import { useRouter } from 'expo-router';
+import * as SplashScreen from 'expo-splash-screen';
+import { useDeliveryLocationListener } from '@/hooks/useDeliveryLocationListener';
+
+// Prevent auto-hiding of splash screen
+SplashScreen.preventAutoHideAsync().catch(() => {});
+
+interface Order {
+  id: string;
+  orderNumber?: string;
+  restaurantName: string;
+  restaurantId?: string;
+  restaurantLatitude?: number;
+  restaurantLongitude?: number;
+  status: string;
+  totalAmount: number;
+  deliveryAddress: string;
+  deliveryPersonId?: string;
+  deliveryPersonName?: string;
+  deliveryPersonStatus?: string;
+  items: Array<{
+    id?: string;
+    name: string;
+    quantity: number;
+    price: number;
+    image_url?: string;
+  }>;
+  createdAt: string;
+  updatedAt?: string;
+  customerName?: string;
+  customerPhone?: string;
+  notes?: string;
+  subtotal?: number;
+  deliveryCost?: number;
+  deliveryLatitude?: number;
+  deliveryLongitude?: number;
+  userLocation?: {
+    latitude: number;
+    longitude: number;
+  };
+  is_completed?: boolean;
+  completed_at?: string;
+}
+
+interface DeliveryPerson {
+  id: string;
+  deliveryPersonTableId?: string;
+  name: string;
+  status: 'busy' | 'free';
+  location?: {
+    latitude: number;
+    longitude: number;
+  };
+  profilePictureUrl?: string;
+}
+
+function OrdersScreenContent() {
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [deliveryPersons, setDeliveryPersons] = useState<DeliveryPerson[]>([]);
+  const [selectedOrder, setSelectedOrder] = useState<Order | null>(null);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [showDeliveryAssignModal, setShowDeliveryAssignModal] = useState(false);
+  const [selectedOrderForDelivery, setSelectedOrderForDelivery] = useState<Order | null>(null);
+  const [selectedDeliveryPerson, setSelectedDeliveryPerson] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [allOrders, setAllOrders] = useState<Order[]>([]);
+  const [notification, setNotification] = useState<{
+    visible: boolean;
+    title: string;
+    message: string;
+    type: 'success' | 'error' | 'info' | 'warning' | 'order';
+  }>({ visible: false, title: '', message: '', type: 'info' });
+
+  // Memoize map coordinates to prevent infinite re-renders - ALWAYS [lat, lng] format
+  const mapRestaurantCoords = useMemo(() => {
+    if (!selectedOrder?.restaurantId) return undefined;
+    
+    // Try to get restaurant coordinates from order data first
+    // This is the MOST accurate - comes from restaurant table
+    const restaurantLat = selectedOrder?.restaurantLatitude || (selectedOrder as any)?.restaurants?.latitude;
+    const restaurantLng = selectedOrder?.restaurantLongitude || (selectedOrder as any)?.restaurants?.longitude;
+    
+    if (restaurantLat && restaurantLng) {
+      const coords: [number, number] = [Number(restaurantLat), Number(restaurantLng)];
+      return coords;
+    }
+
+    // Fallback: Fetch restaurant coordinates if not in order data
+    // This happens when order doesn't include restaurant relation
+    if (selectedOrder?.restaurantId) {
+      // We'll fetch this in a useEffect and store in order data
+    }
+
+    // Last resort: Use default Kabul coordinates
+    return [34.5281, 69.1761] as [number, number];
+  }, [selectedOrder?.restaurantId, selectedOrder?.restaurantLatitude, selectedOrder?.restaurantLongitude]);
+
+  const mapDeliveryCoords = useMemo(() => {
+    // IMPORTANT: Must be [latitude, longitude] format for Leaflet
+    const lat = selectedOrder?.deliveryLatitude;
+    const lng = selectedOrder?.deliveryLongitude;
+    if (!lat || !lng) return undefined;
+    return [Number(lat), Number(lng)] as [number, number];
+  }, [selectedOrder?.deliveryLatitude, selectedOrder?.deliveryLongitude]);
+
+  // REAL-TIME DELIVERY PERSON LOCATION TRACKING (updates every 50 meters)
+  const { 
+    deliveryLocation: realTimeDeliveryLocation,
+    isLoading: isLocationLoading, 
+    error: locationError,
+    hasLocation: hasRealTimeLocation
+  } = useDeliveryLocationListener({
+    enabled: !!selectedOrder?.deliveryPersonId && 
+             (selectedOrder?.status === 'on_the_way' || selectedOrder?.status === 'picked_up'),
+    orderId: selectedOrder?.id,
+    deliveryPersonId: selectedOrder?.deliveryPersonId
+  });
+
+  // Use real-time location if available, otherwise use stored coords
+  const mapDriverCoords = useMemo(() => {
+    if (realTimeDeliveryLocation) {
+      return [realTimeDeliveryLocation.latitude, realTimeDeliveryLocation.longitude] as [number, number];
+    }
+    return mapDeliveryCoords;
+  }, [realTimeDeliveryLocation, mapDeliveryCoords]);
+
+  // Memoize names with proper defaults
+  const mapRestaurantName = useMemo(() => {
+    return selectedOrder?.restaurantName || 'Restaurant';
+  }, [selectedOrder?.restaurantName]);
+
+  const mapUserName = useMemo(() => {
+    return selectedOrder?.customerName || 'Customer';
+  }, [selectedOrder?.customerName]);
+
+  // New state for order confirmation dialog
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
+  const [orderToConfirm, setOrderToConfirm] = useState<Order | null>(null);
+
+  // State for rejection reason dialog
+  const [showRejectionDialog, setShowRejectionDialog] = useState(false);
+  const [orderToReject, setOrderToReject] = useState<Order | null>(null);
+  const [rejectionReason, setRejectionReason] = useState('');
+
+  const router = useRouter();
+
+  // Show notification at top of screen
+  const showNotification = (title: string, message: string, type: 'success' | 'error' | 'info' | 'warning' | 'order' = 'order') => {
+    setNotification({ title, message, visible: true, type });
+    setTimeout(() => {
+      setNotification(prev => ({ ...prev, visible: false }));
+    }, 5000);
+  };
+
+  // Filter orders by date (copied from delivery-personnel-[id].tsx)
+  const filterOrdersByDate = (allOrdersData: Order[], date: Date) => {
+
+    const selectedYear = date.getFullYear();
+    const selectedMonth = date.getMonth();
+    const selectedDay = date.getDate();
+
+
+    const filtered = allOrdersData.filter(order => {
+      if (!order.createdAt) return false;
+
+      const orderDate = new Date(order.createdAt);
+      const orderYear = orderDate.getFullYear();
+      const orderMonth = orderDate.getMonth();
+      const orderDay = orderDate.getDate();
+
+
+      // Compare year, month, and day (all in local timezone)
+      const isDateMatch = orderYear === selectedYear && orderMonth === selectedMonth && orderDay === selectedDay;
+      return isDateMatch;
+    });
+
+    return filtered;
+  };
+
+  // Handle date change from DatePicker
+  const handleDateChange = (newDate: Date) => {
+    // Ensure we're using the date at midnight local time to avoid timezone issues
+    const normalizedDate = new Date(newDate.getFullYear(), newDate.getMonth(), newDate.getDate());
+
+
+    setSelectedDate(normalizedDate);
+    
+    // Filter all orders by selected date
+    const filtered = filterOrdersByDate(allOrders, normalizedDate);
+    setOrders(filtered);
+    
+    setShowDatePicker(false);
+  };
+
+  // Handle reject order with reason
+  const handleRejectOrder = (order: Order) => {
+    setOrderToReject(order);
+    setRejectionReason('');
+    setShowRejectionDialog(true);
+  };
+
+  const confirmRejectOrder = async () => {
+    if (!orderToReject) return;
+
+    try {
+      setLoading(true);
+
+      // Use the rejectOrder API function which handles rejection reason
+      await adminApiService.orders.rejectOrder(orderToReject.id, rejectionReason || 'Rejected by admin');
+      
+      showNotification('Order Rejected', `Order #${orderToReject.orderNumber?.substring(0, 8) || 'N/A'} has been rejected`, 'error');
+      
+      // Refresh orders
+      await fetchOrders();
+      
+      setShowRejectionDialog(false);
+      setOrderToReject(null);
+      setRejectionReason('');
+    } catch (error) {
+      console.error('[Orders] Error rejecting order:', error);
+      Alert.alert('Error', 'Failed to reject order');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch orders with order items
+  const fetchOrders = async () => {
+    try {
+      setLoading(true);
+
+      // First, get all orders with ALL location fields needed for map
+      const { data: ordersData, error: ordersError } = await supabase
+        .from('orders')
+        .select(`
+          id,
+          order_number,
+          status,
+          total_amount,
+          subtotal,
+          delivery_cost,
+          delivery_address,
+          delivery_notes,
+          delivery_lat,
+          delivery_lng,
+          restaurant_id,
+          restaurant_name,
+          restaurant_latitude,
+          restaurant_longitude,
+          customer_name,
+          customer_phone,
+          user_id,
+          created_at,
+          updated_at,
+          restaurants (
+            id,
+            name,
+            latitude,
+            longitude,
+            address,
+            phone
+          ),
+          profiles (
+            id,
+            name,
+            phone,
+            email
+          ),
+          delivery_persons (
+            id,
+            name,
+            is_available
+          )
+        `)
+        .order('created_at', { ascending: false });
+
+      if (ordersError) {
+        console.error('[Orders] ƒ?O Error fetching orders:', ordersError);
+        throw ordersError;
+      }
+
+      if (ordersData && ordersData.length > 0) {
+      }
+
+      // Then, fetch order items for all orders
+      const orderIds = ordersData?.map(o => o.id) || [];
+      let orderItemsMap: Record<string, any[]> = {};
+
+      if (orderIds.length > 0) {
+        
+        const { data: itemsData, error: itemsError } = await supabase
+          .from('order_items')
+          .select('*')
+          .in('order_id', orderIds);
+
+        if (itemsError) {
+          console.error('[Orders] ƒ?O Error fetching order items:', itemsError);
+        } else {
+          
+          if (itemsData && itemsData.length > 0) {
+            
+            orderItemsMap = itemsData.reduce((acc, item) => {
+              if (!acc[item.order_id]) {
+                acc[item.order_id] = [];
+              }
+              acc[item.order_id].push(item);
+              return acc;
+            }, {} as Record<string, any[]>);
+            
+            Object.keys(orderItemsMap).forEach(orderId => {
+              // Process order items if needed
+            });
+          }
+        }
+      }
+
+      const transformedOrders: Order[] = (ordersData || []).map((order: any) => {
+        const orderItems = orderItemsMap[order.id] || order.order_items || [];
+
+
+        return {
+          id: order.id,
+          orderNumber: order.order_number,
+          restaurantName: order.restaurants?.name || 'Unknown Restaurant',
+          restaurantId: order.restaurant_id,
+          restaurantLatitude: order.restaurant_latitude || order.restaurants?.latitude,
+          restaurantLongitude: order.restaurant_longitude || order.restaurants?.longitude,
+          status: order.status,
+          totalAmount: order.total_amount || 0,
+          deliveryAddress: order.delivery_address || '',
+          deliveryPersonId: order.delivery_person_id,
+          deliveryPersonName: order.delivery_persons?.name,
+          items: orderItems.map((item: any) => ({
+            id: item.id,
+            name: item.menu_item_name || item.name || 'Unknown Item',
+            quantity: item.quantity,
+            price: item.price,
+            image_url: item.menu_item_image_url || item.image_url
+          })),
+          createdAt: order.created_at,
+          updatedAt: order.updated_at,
+          customerName: order.customer_name,
+          customerPhone: order.customer_phone,
+          notes: order.delivery_notes,
+          subtotal: order.subtotal,
+          deliveryCost: order.delivery_cost,
+          deliveryLatitude: order.delivery_lat,
+          deliveryLongitude: order.delivery_lng,
+          // User location for map - use delivery coords directly
+          userLocation: order.delivery_lat && order.delivery_lng ? {
+            latitude: order.delivery_lat,
+            longitude: order.delivery_lng
+          } : undefined,
+          is_completed: order.is_completed,
+          completed_at: order.completed_at
+        };
+      });
+
+      // DEBUG: Log coordinate values
+      const firstOrder = transformedOrders[0];
+      const deliveryLat = firstOrder?.deliveryLatitude || 0;
+      const deliveryLng = firstOrder?.deliveryLongitude || 0;
+
+      // Store ALL orders
+      setAllOrders(transformedOrders);
+      
+      // Filter by selected date BEFORE setting orders (FIX: filter on initial load)
+      const filteredByDate = filterOrdersByDate(transformedOrders, selectedDate);
+      setOrders(filteredByDate);
+
+      setLoading(false);
+    } catch (error) {
+      console.error('[Orders] ƒ?O ERROR fetching orders:', error);
+      console.error('[Orders] Error details:', JSON.stringify(error, null, 2));
+      setLoading(false);
+      Alert.alert('Error', 'Failed to load orders');
+    }
+  };
+
+  // Fetch delivery persons
+  const fetchDeliveryPersons = async () => {
+    try {
+      const { data: deliveryPersonsData, error: deliveryPersonsError } = await supabase
+        .from('delivery_persons')
+        .select('*')
+        .eq('is_available', true);
+
+      if (deliveryPersonsError) throw deliveryPersonsError;
+
+      const transformedDeliveryPersons: DeliveryPerson[] = (deliveryPersonsData || []).map((person: any) => ({
+        id: person.user_id || person.id,
+        deliveryPersonTableId: person.id,
+        name: person.name || 'Unknown',
+        status: person.is_available ? 'free' : 'busy',
+        location: person.current_location || (person.current_latitude && person.current_longitude ? {
+          latitude: person.current_latitude,
+          longitude: person.current_longitude,
+        } : undefined),
+        profilePictureUrl: person.image_url,
+      }));
+
+      setDeliveryPersons(transformedDeliveryPersons);
+    } catch (error) {
+      console.error('[Orders] ƒ?O Error fetching delivery persons:', error);
+      setDeliveryPersons([]);
+    }
+  };
+
+  // Load orders and delivery persons when component mounts
+  useEffect(() => {
+    fetchOrders();
+    fetchDeliveryPersons();
+  }, []);
+
+  // Set up Realtime subscription for orders changes
+  useEffect(() => {
+
+    // Subscribe to orders changes
+    const ordersChannel = supabase
+      .channel('orders-sync')
+      .on(
+        'postgres_changes',
+        {
+          event: '*', // Listen to all events
+          schema: 'public',
+          table: 'orders'
+        },
+        async (payload: any) => {
+
+          // NEW ORDER - Show notification with alarm sound
+          if (payload.eventType === 'INSERT' && payload.new) {
+            const orderNumber = payload.new?.order_number?.substring(0, 8) || payload.new?.id?.substring(0, 8);
+            const customerName = payload.new?.customer_name || payload.new?.user_name || 'Customer';
+            const totalAmount = payload.new?.total_amount || 0;
+
+
+            // Show in-app notification banner
+            setNotification(prev => {
+              return {
+                ...prev,
+                visible: true,
+                title: 'dY"" New Order Received!',
+                message: `${customerName} ordered AFG ${totalAmount} (Order #${orderNumber})`,
+                type: 'order',
+              };
+            });
+
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+              setNotification(prev => ({ ...prev, visible: false }));
+            }, 5000);
+
+            // Send BACKGROUND PUSH notification (works even when app is closed!)
+            try {
+              const { sendNewOrderPushNotification } = await import('@/lib/push-notification-service');
+              
+              const result = await sendNewOrderPushNotification({
+                adminEmail: 'Mohammadseyar885@gmail.com',
+                orderId: payload.new?.id,
+                orderNumber: orderNumber,
+                customerName: customerName,
+                totalAmount: totalAmount
+              });
+              
+              if (result.success) {
+                console.warn('[Orders Realtime] ƒsÿ‹,? Push notification failed:', result.error);
+              }
+            } catch (error) {
+              console.error('[Orders Realtime] ƒ?O Error sending push notification:', error);
+              console.error('[Orders Realtime] Error details:', JSON.stringify(error, null, 2));
+            }
+            
+            // Also send local notification for foreground (backup)
+            try {
+              const { sendLocalNotification } = await import('@/lib/notification-service');
+              await sendLocalNotification({
+                title: 'dY"" New Order Received!',
+                body: `${customerName} ordered AFG ${totalAmount}. Please confirm the order.`,
+                type: 'order',
+                sound: true,
+                badge: 1,
+                data: {
+                  orderId: payload.new?.id,
+                  orderNumber: orderNumber,
+                  type: 'new-order',
+                  customerName: customerName,
+                  totalAmount: totalAmount
+                }
+              });
+            } catch (error) {
+              console.error('[Orders Realtime] ƒ?O Error sending local notification:', error);
+            }
+          }
+
+          // Show notification if order was delivered
+          if (payload.eventType === 'UPDATE' && payload.new?.status === 'delivered' && payload.old?.status !== 'delivered') {
+            const orderNumber = payload.new?.order_number?.substring(0, 8) || payload.new?.id?.substring(0, 8);
+
+
+            // Show in-app notification banner
+            setNotification(prev => ({
+              ...prev,
+              visible: true,
+              title: 'ƒo. Order Delivered',
+              message: `Order #${orderNumber} has been delivered successfully!`,
+              type: 'success',
+            }));
+
+            // Auto-hide after 5 seconds
+            setTimeout(() => {
+              setNotification(prev => ({ ...prev, visible: false }));
+            }, 5000);
+
+            try {
+              const { sendLocalNotification } = await import('@/lib/notification-service');
+              await sendLocalNotification({
+                title: 'ƒo. Order Delivered',
+                body: `Order #${orderNumber} has been delivered successfully!`,
+                type: 'success',
+                sound: true,
+                badge: 0,
+              });
+            } catch (error) {
+              console.error('[Orders] Error sending system notification:', error);
+            }
+          }
+
+          // Reload orders to sync changes
+          await fetchOrders();
+        }
+      )
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'order_items'
+        },
+        async (payload: any) => {
+          await fetchOrders();
+        }
+      )
+      .subscribe(async (status) => {
+        if (status === 'SUBSCRIBED') {
+          console.error('[Orders Realtime] ƒ?O CHANNEL_ERROR - Realtime connection issue');
+          console.error('[Orders Realtime] dY'­ This usually means:');
+          console.error('[Orders Realtime]    1. Realtime is not enabled in Supabase Dashboard');
+          console.error('[Orders Realtime]    2. Network connection issue');
+          console.error('[Orders Realtime]    3. Supabase project is paused');
+          console.error('[Orders Realtime] dY"? Run ENABLE_REALTIME_FOR_ORDERS.sql in Supabase SQL Editor');
+          console.error('[Orders Realtime] dY", Will retry connection in 5 seconds...');
+          
+          // Auto-retry connection after 5 seconds
+          setTimeout(() => {
+            // Channel will automatically attempt to reconnect
+          }, 5000);
+        } else if (status === 'TIMED_OUT') {
+          console.error('[Orders Realtime] ƒ?O TIMED_OUT - Connection timed out');
+          console.error('[Orders Realtime] dY" Check your internet connection');
+          console.error('[Orders Realtime] dY", Will retry connection...');
+        } else if (status === 'CLOSED') {
+          console.warn('[Orders Realtime] ƒsÿ‹,? CLOSED - Connection closed');
+          console.warn('[Orders Realtime] dY", Attempting to reconnect...');
+        }
+      });
+
+    // Cleanup subscription on unmount
+    return () => {
+      supabase.removeChannel(ordersChannel);
+    };
+  }, []);
+
+  // Update order status
+  const updateOrderStatus = async (orderId: string, newStatus: string) => {
+    setLoading(true);
+
+    try {
+      await adminApiService.orders.updateStatus(orderId, newStatus);
+      showNotification('Success', `Order status updated to ${newStatus}`, 'success');
+      // Refresh orders to get latest data
+      await fetchOrders();
+    } catch (error) {
+      console.error('[Orders] Error updating order status:', error);
+      Alert.alert('Error', 'Failed to update order status');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Assign delivery person
+  const assignDeliveryPerson = async (orderId: string, deliveryPersonId: string) => {
+    setLoading(true);
+
+    try {
+      await adminApiService.orders.assignToDeliveryPerson(orderId, deliveryPersonId);
+      showNotification('Success', 'Delivery person assigned', 'success');
+      await fetchOrders();
+      Alert.alert('Success', 'Delivery person assigned to order');
+    } catch (error) {
+      console.error('[Orders] Error assigning delivery person:', error);
+      Alert.alert('Error', 'Failed to assign delivery person');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const showDeliveryAssignmentModal = (order: Order) => {
+    setSelectedOrderForDelivery(order);
+    setSelectedDeliveryPerson(null);
+    setShowDeliveryAssignModal(true);
+  };
+
+  const confirmDeliveryAssignment = async () => {
+    if (!selectedOrderForDelivery || selectedDeliveryPerson === null) {
+      Alert.alert('Error', 'Please select a delivery person');
+      return;
+    }
+
+    try {
+      await assignDeliveryPerson(selectedOrderForDelivery.id, selectedDeliveryPerson);
+      setShowDeliveryAssignModal(false);
+      setSelectedOrderForDelivery(null);
+      setSelectedDeliveryPerson(null);
+    } catch (error) {
+      console.error('Error confirming delivery assignment:', error);
+      Alert.alert('Error', 'Failed to assign delivery person');
+    }
+  };
+
+  // Show order confirmation dialog FIRST before updating status
+  const handleConfirmOrder = (order: Order) => {
+    setOrderToConfirm(order);
+    setShowConfirmDialog(true);
+  };
+
+  // Confirm order after viewing details - THEN show delivery assignment modal
+  const confirmOrderUpdate = async () => {
+    if (!orderToConfirm) return;
+
+
+    try {
+      setShowConfirmDialog(false);
+      
+      // Step 1: Update order status to confirmed
+      await updateOrderStatus(orderToConfirm.id, 'confirmed');
+      
+      // Step 2: IMMEDIATELY show delivery assignment modal
+      showDeliveryAssignmentModal(orderToConfirm);
+      
+      setOrderToConfirm(null);
+    } catch (error) {
+      console.error('[Orders] ƒ?O Error confirming order:', error);
+      Alert.alert('Error', 'Failed to confirm order');
+      setOrderToConfirm(null);
+    }
+  };
+
+  const showOrderDetails = (order: Order) => {
+    setSelectedOrder(order);
+    setModalVisible(true);
+  };
+
+  const getStatusColor = (status: string) => {
+    switch(status) {
+      case 'pending': return '#FFCC00';
+      case 'confirmed': return '#C41E26';
+      case 'preparing': return '#5856D6';
+      case 'ready': return '#C41E26';
+      case 'on_the_way': return '#FF9500';
+      case 'delivered': return '#4CD964';
+      case 'cancelled': return '#C41E26';
+      case 'rejected': return '#C41E26';
+      default: return '#8E8E93';
+    }
+  };
+
+  const renderItem = ({ item }: { item: Order }) => {
+    
+    if (item.items && item.items.length > 0) {
+    
+    
+    return (
+      <View style={styles.orderCard}>
+        <View style={styles.orderHeader}>
+          <Text style={[styles.status, { backgroundColor: getStatusColor(item.status) }]}>
+            {item.status.charAt(0).toUpperCase() + item.status.slice(1).replace('_', ' ')}
+          </Text>
+        </View>
+
+        <Text style={styles.restaurantName}>{item.restaurantName}</Text>
+
+        <View style={styles.itemsContainer}>
+          {item.items && item.items.length > 0 ? (
+            <>
+              {item.items.slice(0, 3).map((orderItem, index) => {
+                return (
+                  <View key={index} style={styles.orderItemRow}>
+                    <Text style={styles.orderItemText}>{orderItem.quantity}x {orderItem.name}</Text>
+                  </View>
+                );
+              })}
+              {item.items.length > 3 && (
+                <Text style={styles.itemText}>+ {item.items.length - 3} more items</Text>
+              )}
+            </>
+          ) : (
+            <Text style={styles.itemText}>No items</Text>
+          )}
+        </View>
+
+        <Text style={styles.totalAmount}>Total: AFG {item.totalAmount.toFixed(2)}</Text>
+        <Text style={styles.deliveryAddress}>Delivery: {item.deliveryAddress}</Text>
+
+        <View style={styles.orderActions}>
+          {item.status === 'pending' && (
+            <View>
+              <View style={styles.actionRow}>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.successButton]}
+                  onPress={() => handleConfirmOrder(item)}
+                  disabled={loading}
+                >
+                  <Text style={styles.actionButtonText}>ƒo. Confirm</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.rejectButton]}
+                  onPress={() => handleRejectOrder(item)}
+                  disabled={loading}
+                >
+                  <Text style={styles.actionButtonText}>ƒ?O Reject</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
+          )}
+
+          <TouchableOpacity
+            style={[styles.actionButton, styles.viewDetailsButton]}
+            onPress={() => showOrderDetails(item)}
+          >
+            <Text style={styles.viewDetailsButtonText}>dY"< View Details</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    );
+  };
+
+  // Order Confirmation Dialog - shows order items BEFORE confirming
+  const renderOrderConfirmDialog = () => (
+    <Modal
+      animationType="slide"
+      transparent={true}
+      visible={showConfirmDialog}
+      onRequestClose={() => {
+        setShowConfirmDialog(false);
+        setOrderToConfirm(null);
+      }}
+    >
+      <View style={styles.modalContainer}>
+        <View style={[styles.modalContent, { maxHeight: '85%' }]}>
+          <ScrollView
+            contentContainerStyle={styles.scrollContent}
+            showsVerticalScrollIndicator={true}
+            keyboardShouldPersistTaps="handled"
+          >
+            <Text style={styles.modalTitle}>Confirm Order</Text>
+
+            {orderToConfirm && (
+              <>
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Order Number:</Text>
+                  <Text style={styles.detailValue}>{orderToConfirm.orderNumber || orderToConfirm.id.substring(0, 8)}</Text>
+                </View>
+
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Restaurant:</Text>
+                  <Text style={styles.detailValue}>{orderToConfirm.restaurantName}</Text>
+                </View>
+
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Customer:</Text>
+                  <Text style={styles.detailValue}>{orderToConfirm.customerName || 'N/A'}</Text>
+                </View>
+
+                {orderToConfirm.customerPhone && (
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Phone:</Text>
+                    <Text style={styles.detailValue}>{orderToConfirm.customerPhone}</Text>
+                  </View>
+                )}
+
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Delivery Address:</Text>
+                  <Text style={styles.detailValue}>{orderToConfirm.deliveryAddress}</Text>
+                </View>
+
+                <Text style={styles.itemsTitle}>Order Items:</Text>
+                {orderToConfirm.items && orderToConfirm.items.length > 0 ? (
+                  <View style={styles.itemsContainer}>
+                    {orderToConfirm.items.map((item, index) => (
+                      <View key={index} style={styles.itemRow}>
+                        <View style={styles.itemImageContainer}>
+                          {item.image_url ? (
+                            <Image source={{ uri: item.image_url }} style={styles.itemImage} />
+                          ) : (
+                            <View style={styles.itemImagePlaceholder}>
+                              <Text style={styles.itemImagePlaceholderText}>No Image</Text>
+                            </View>
+                          )}
+                  

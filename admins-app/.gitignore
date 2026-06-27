@@ -1,0 +1,62 @@
+# Learn more https://docs.github.com/en/get-started/getting-started-with-git/ignoring-files
+
+# dependencies
+node_modules/
+
+# Expo
+.expo/
+dist/
+web-build/
+expo-env.d.ts
+
+# Native
+.kotlin/
+*.orig.*
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+
+# Metro
+.metro-health-check*
+
+# debug
+npm-debug.*
+yarn-debug.*
+yarn-error.*
+
+# macOS
+.DS_Store
+*.pem
+
+# local env files
+.env
+.env*.local
+
+# generated config
+app.json
+
+# typescript
+*.tsbuildinfo
+
+app-example
+
+# generated native folders
+/ios
+/android
+  
+# Firebase config (use templates instead)
+google-services.json
+GoogleService-Info.plist
+!google-services.json.template
+!GoogleService-Info.plist.template
+google-services.json
+
+# OneSignal keys (VERY IMPORTANT - keep secret)
+# ONESIGNAL_REST_API_KEY is secret - NEVER commit
+# ONESIGNAL_APP_ID can be in .env.example (it's public in app builds anyway)
+.env
+.env.local
+.env.production
+.env.*.local
