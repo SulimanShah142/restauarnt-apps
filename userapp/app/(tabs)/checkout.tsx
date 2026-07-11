@@ -48,7 +48,9 @@ export default function CheckoutScreen() {
     max_free_delivery_distance?: number;
     additional_fee_per_km_after_free?: number;
   } | null>(null);
-
+const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
+const [loadingAddresses, setLoadingAddresses] = useState(false);
+const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   // Notification state
   const [notification, setNotification] = useState<{
     visible: boolean;
@@ -334,6 +336,46 @@ export default function CheckoutScreen() {
     fetchRestaurantData();
   }, [cart?.length]); // Only depend on length to avoid infinite loops
 
+const loadSavedAddresses = async () => {
+  try {
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+
+    if (!user) return;
+
+    const { data, error } = await supabase
+      .from("addresses")
+      .select("*")
+      .eq("user_id", user.id)
+      .is("deleted_at", null)
+      .order("is_default", { ascending: false })
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.log(error);
+      return;
+    }
+
+    console.log("Loaded:", data);
+
+    setSavedAddresses(data ?? []);
+
+    const defaultAddress = data?.find(a => a.is_default);
+
+    if (defaultAddress) {
+      setSelectedAddressId(defaultAddress.id);
+      setAddress(defaultAddress.street_address ?? "");
+    }
+  } catch (e) {
+    console.log(e);
+  }
+};
+
+useEffect(() => {
+    loadSavedAddresses();
+}, []);
+
   // Calculate delivery estimates when user location or restaurant location changes
   useEffect(() => {
     if (userLocation && cart && Array.isArray(cart) && cart.length > 0) {
@@ -437,6 +479,8 @@ export default function CheckoutScreen() {
     if (sessionError || !currentSession?.user) {
       // console.error('No session user found:', sessionError);
       Alert.alert('Error', 'You must be logged in to place an order');
+      router.replace('/(auth)/sign-in');
+      router.refresh()
       return;
     }
 
@@ -547,7 +591,7 @@ export default function CheckoutScreen() {
       console.log('[Checkout] Order created - database triggers will send notifications');
 
       // If user wants to save the address for future use
-      if (saveAddress && userLocation) {
+      if (saveAddress) {
         try {
           // Check if an address with this street_address already exists
           const { data: existingAddress, error: existingError } = await supabase
@@ -559,18 +603,36 @@ export default function CheckoutScreen() {
 
           if (existingError && existingError.code === 'PGRST116') { // Record not found
             // Create new address record - matching the actual addresses table schema
-            const { error: insertError } = await supabase
-              .from('addresses')
-              .insert([{
-                user_id: userId,
-                street_address: address,
-                city: 'Kabul', // Could be extracted from location data
-                is_default: false // Set as default could be an option
-              }] as any);
+          const { data: existingAddress } = await supabase
+  .from("addresses")
+  .select("id")
+  .eq("user_id", userId)
+  .eq("street_address", address)
+  .is("deleted_at", null)
+  .maybeSingle();
 
-            if (insertError) {
-              // console.error('Error saving address:', insertError);
-            }
+
+if(!existingAddress){
+
+  const { error: insertError } = await supabase
+    .from("addresses")
+    .insert([{
+      user_id:userId,
+      street_address:address.trim(),
+      city:"Kabul",
+      is_default:true
+    }]);
+
+
+  if(insertError){
+    console.log(
+      "[ADDRESS] Save error:",
+      insertError
+    );
+  }
+
+}
+
           } else if (existingError) {
             // console.error('Error checking/saving address:', existingError);
           }
@@ -883,6 +945,52 @@ export default function CheckoutScreen() {
 
           <View style={[styles.inputGroup, { zIndex: 9 }]}>
             <Text style={styles.label}>Delivery Address *</Text>
+            {savedAddresses.length > 0 && (
+<View style={{marginBottom:12}}>
+
+<Text style={styles.label}>
+Saved Addresses
+</Text>
+
+
+{savedAddresses.map((item)=>(
+<TouchableOpacity
+key={item.id}
+style={{
+ padding:12,
+ borderRadius:10,
+ borderWidth:1,
+ marginBottom:8,
+ backgroundColor:
+ selectedAddressId === item.id
+ ? "#eee"
+ : "#fff"
+}}
+onPress={()=>{
+
+ setSelectedAddressId(item.id);
+
+ setAddress(
+   item.street_address || ""
+ );
+
+}}
+>
+
+<Text>
+{item.street_address}
+</Text>
+
+<Text>
+{item.city}
+</Text>
+
+
+</TouchableOpacity>
+))}
+
+</View>
+)}
             <TextInput
               style={[styles.input, { zIndex: 5 }]}
               value={address}

@@ -10,7 +10,7 @@ module.exports = function(config) {
   return Object.assign({}, config, {
     name: 'AYAR Food Delivery',
     slug: 'ayar-food-delivery',
-    version: '1.0.0',
+    version: '1.0.3',
     orientation: 'portrait',
     icon: './assets/images/splash-screen.jpg',
     scheme: 'ayarfood',
@@ -48,20 +48,25 @@ module.exports = function(config) {
       usesCleartextTraffic: true,
       jsEngine: 'hermes',
     },
-    ios: {
-      supportsTablet: true,
-      bundleIdentifier: 'com.ayar.food',
-      appleTeamId: '3A4VP86PL8', // Linked your verified Apple Team ID
-      icon: './assets/images/splash-screen.jpg',
-      infoPlist: {
-            "ITSAppUsesNonExemptEncryption": false,
-        NSCameraUsageDescription: 'We need access to your camera to take photos.',
-        NSPhotoLibraryUsageDescription: 'We need access to your photo library to select images.',
-        NSPhotoLibraryAddUsageDescription: 'We need permission to save photos to your photo library.',
-        NSLocationWhenInUseUsageDescription: 'We need your location to deliver food to your exact address. This app only accesses location when the app is open and in use.',
-        UIBackgroundModes: ['fetch', 'remote-notification'], // Required for background iOS push handling
-      },
-    },
+   ios: {
+  "supportsTablet": false,
+  "bundleIdentifier": "com.ayar.food",
+  "appleTeamId": "3A4VP86PL8",
+  "icon": "./assets/images/splash-screen.jpg",
+  "infoPlist": {
+    "ITSAppUsesNonExemptEncryption": false,
+    "NSCameraUsageDescription": "We need access to your camera to take photos.",
+    "NSPhotoLibraryUsageDescription": "We need access to your photo library to select images.",
+    "NSPhotoLibraryAddUsageDescription": "We need permission to save photos to your photo library.",
+    "NSLocationWhenInUseUsageDescription": "We need your location to deliver food to your exact address. This app only accesses location when the app is open and in use.",
+    "UIBackgroundModes": ["fetch", "remote-notification"],
+    
+    // ADD THIS BLOCK BELOW TO FIX HARDWARE LAUNCH CRASHES
+    "UIRequiredDeviceCapabilities": [
+      "arm64"
+    ]
+  }
+},
     web: {
       output: 'static',
       favicon: './assets/images/splash-screen.jpg',
@@ -134,7 +139,7 @@ module.exports = function(config) {
       onesignalAppId: process.env.ONESIGNAL_APP_ID || process.env.EXPO_PUBLIC_ONESIGNAL_APP_ID || '38e20d47-839b-4944-8455-daf65977aaf9',
     },
     owner: 'slliman',
-    runtimeVersion: '1.0.9',
+    runtimeVersion: '1.1.2',
     updates: {
       url: 'https://u.expo.dev/8c7d7420-9fbc-4cf3-a4b9-a23023b81d37',
       fallbackToCacheTimeout: 30000,

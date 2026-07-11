@@ -219,7 +219,7 @@ export function RequireAuth({ children }: { children: React.ReactNode }) {
   }
 
   if (!isAuthenticated) {
-    return <Redirect href="/(auth)/sign-in" />;
+    return;
   }
 
   return <>{children}</>;

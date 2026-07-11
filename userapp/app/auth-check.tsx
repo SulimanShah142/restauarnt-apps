@@ -31,7 +31,7 @@ export default function AuthCheck() {
                     return;
                 }
 
-                if (session?.user) {
+                               if (session?.user) {
                     console.log('[AuthCheck] Session found, user:', session.user.id);
                     hasNavigatedRef.current = true;
 
@@ -41,16 +41,24 @@ export default function AuthCheck() {
                     // Navigate immediately so the UI doesn't freeze/crash
                     router.replace('/(tabs)/menu');
                 } else {
-                    console.log('[AuthCheck] No session found');
+                    console.log('[AuthCheck] No session found, allowing guest browsing');
                     hasNavigatedRef.current = true;
-                    router.replace('/(auth)/sign-in');
+                    // Allow guest browsing by navigating to menu instead of sign-in
+                    router.replace('/(tabs)/menu');
                 }
-            } catch (error) {
+
+
+
+
+
+
+                        } catch (error) {
                 console.error('[AuthCheck] Error checking authentication:', error);
                 // Wait before retrying navigation
                 await new Promise(resolve => setTimeout(resolve, 500));
                 hasNavigatedRef.current = true;
-                router.replace('/(auth)/sign-in');
+                // On error, default to menu as guest instead of forcing sign-in
+                router.replace('/(tabs)/menu');
             } finally {
                 setIsChecking(false);
             }

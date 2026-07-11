@@ -1,122 +1,183 @@
 // userapp/app/_layout.tsx
-// Match deliverapp/admins-app pattern - simple initialization
 
-import { Stack } from 'expo-router';
-import { CartProvider } from '../contexts/CartContext';
-import { DatabaseProvider } from '../contexts/DatabaseContext';
-import { BadgeProvider } from '../contexts/BadgeContext';
-import { AuthProvider } from '../contexts/AuthContext';
-import { GestureHandlerRootView } from 'react-native-gesture-handler';
-import React, { useState, useEffect } from 'react';
-import { View, StyleSheet, LogBox, Image, ActivityIndicator } from 'react-native';
-import { Asset } from 'expo-asset';
-import * as SplashScreen from 'expo-splash-screen';
-import * as Notifications from 'expo-notifications';
-import { initializeOneSignal } from '../utils/onesignal';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { supabase } from '../lib/supabase';
+import { Stack } from "expo-router";
 
-LogBox.ignoreLogs(['Unable to activate keep awake', 'expo-keep-awake', 'KeepAwake']);
+import { CartProvider } from "../contexts/CartContext";
+import { DatabaseProvider } from "../contexts/DatabaseContext";
+import { BadgeProvider } from "../contexts/BadgeContext";
+import { AuthProvider } from "../contexts/AuthContext";
+
+import { GestureHandlerRootView } from "react-native-gesture-handler";
+
+import React, { useEffect, useState } from "react";
+
+import {
+  View,
+  StyleSheet,
+  LogBox,
+  Image,
+  ActivityIndicator,
+} from "react-native";
+
+import * as SplashScreen from "expo-splash-screen";
+import * as Notifications from "expo-notifications";
+
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
+import { Asset } from "expo-asset";
+
+import { supabase } from "../lib/supabase";
+import { initializeOneSignal } from "../utils/onesignal";
+
+LogBox.ignoreLogs([
+  "Unable to activate keep awake",
+  "expo-keep-awake",
+  "KeepAwake",
+]);
+
+// IMPORTANT
+SplashScreen.preventAutoHideAsync().catch(() => {});
+
+// Safety wrapper
+async function safeTask(
+  name: string,
+  task: () => Promise<any>,
+  timeout = 8000,
+) {
+  try {
+    console.log(`[BOOT] Starting ${name}`);
+
+    await Promise.race([
+      task(),
+
+      new Promise((_, reject) =>
+        setTimeout(() => reject(new Error(`${name} timeout`)), timeout),
+      ),
+    ]);
+
+    console.log(`[BOOT] ✅ ${name} completed`);
+  } catch (error) {
+    console.error(`[BOOT] ❌ ${name} failed`, error);
+  }
+}
 
 export default function RootLayout() {
-  const [appIsReady, setAppIsReady] = useState(false);
+  const [appReady, setAppReady] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
 
-  console.log('[UserAppLayout] Render - appIsReady:', appIsReady, 'showSplash:', showSplash);
-
-  // Initialize app
   useEffect(() => {
-    async function prepare() {
-      try {
-        console.log('[UserAppLayout] Initializing app...');
+    async function boot() {
+      console.log("[BOOT] AYAR startup beginning");
 
-        // 0. Preload splash image to prevent 0x0 render
-        const splashAsset = Asset.fromModule(require('../assets/images/splash-screen.jpg'));
-        await splashAsset.downloadAsync();
-        console.log('[UserAppLayout] ✅ Splash image preloaded');
+      await safeTask("Splash Asset", async () => {
+        const asset = Asset.fromModule(
+          require("../assets/images/splash-screen.jpg"),
+        );
 
-        // 1. Wait for AsyncStorage to be ready
-        await AsyncStorage.getItem('app_init_check');
-        console.log('[UserAppLayout] ✅ AsyncStorage ready');
+        await asset.downloadAsync();
+      });
 
-        // 2. Initialize Supabase client
-        console.log('[UserAppLayout] Initializing Supabase...');
-        try {
-          const { data: { session } } = await supabase.auth.getSession();
-          console.log('[UserAppLayout] ✅ Supabase ready, session:', !!session);
-        } catch (supabaseError) {
-          console.error('[UserAppLayout] Supabase initialization error:', supabaseError);
-        }
+      await safeTask("AsyncStorage", async () => {
+        await AsyncStorage.getItem("app_init_check");
+      });
 
-        // 3. Initialize OneSignal (SDK only, no permission request)
+      await safeTask("Supabase", async () => {
+        const { data } = await supabase.auth.getSession();
+
+        console.log("[BOOT] Supabase session", !!data.session);
+      });
+
+      await safeTask("OneSignal", async () => {
         await initializeOneSignal();
-        console.log('[UserAppLayout] ✅ OneSignal initialized (SDK only)');
+      });
 
-        // 4. Notification permissions will be requested during login
-        console.log('[UserAppLayout] ℹ️ Notification permissions will be requested during login');
-
-        // 5. Clear badge
+      await safeTask("Badge Reset", async () => {
         await Notifications.setBadgeCountAsync(0);
-        console.log('[UserAppLayout] ✅ Badge cleared');
+      });
 
-        console.log('[UserAppLayout] ✅ App initialization complete');
-        setAppIsReady(true);
-      } catch (e) {
-        console.error('[UserAppLayout] ❌ Initialization error:', e);
-        console.error('[UserAppLayout] Error stack:', e instanceof Error ? e.stack : 'No stack');
-        setAppIsReady(true); // Continue anyway to prevent app crash
-      }
+      console.log("[BOOT] ALL SERVICES FINISHED");
+
+      // NEVER BLOCK APP
+      setAppReady(true);
     }
-    prepare();
+
+    // absolute emergency escape
+    const emergency = setTimeout(() => {
+      console.error("[BOOT] Emergency startup unlock");
+
+      setAppReady(true);
+    }, 12000);
+
+    boot().finally(() => {
+      clearTimeout(emergency);
+    });
   }, []);
 
-  // Hide splash screen when app is ready
   useEffect(() => {
-    if (appIsReady) {
-      const t = setTimeout(async () => {
-        try {
-          // Wait a bit more to ensure image is loaded
-          await new Promise(r => setTimeout(r, 1500));
-          await SplashScreen.hideAsync();
-          setShowSplash(false);
-        } catch (e) {
-          console.error('[UserAppLayout] Splash hide error:', e);
-          setShowSplash(false);
-        }
-      }, 2500);
-      return () => clearTimeout(t);
-    }
-  }, [appIsReady]);
+    if (!appReady) return;
 
-  // Show splash screen
+    const hide = async () => {
+      try {
+        await SplashScreen.hideAsync();
+      } catch (e) {
+        console.log("[BOOT] Splash hide failed", e);
+      }
+
+      setShowSplash(false);
+    };
+
+    const timer = setTimeout(hide, 500);
+
+    return () => clearTimeout(timer);
+  }, [appReady]);
+
   if (showSplash) {
     return (
       <View style={styles.splashContainer}>
         <Image
-          source={require('../assets/images/splash-screen.jpg')}
+          source={require("../assets/images/splash-screen.jpg")}
           style={styles.splashLogo}
           resizeMode="contain"
-          onLoad={() => console.log('[UserAppLayout] ✅ Splash image loaded')}
         />
-        <ActivityIndicator size="large" color="#fff" style={{ marginTop: 20 }} />
+
+        <ActivityIndicator
+          size="large"
+          color="#fff"
+          style={{
+            marginTop: 20,
+          }}
+        />
       </View>
     );
   }
 
-  // Render main app with proper provider hierarchy (matching deliverapp/admins-app)
   return (
     <GestureHandlerRootView style={{ flex: 1 }}>
       <AuthProvider>
         <DatabaseProvider>
           <CartProvider>
             <BadgeProvider>
-              <Stack screenOptions={{ headerShown: false }}>
-                <Stack.Screen name="index" options={{ headerShown: false }} />
-                <Stack.Screen name="auth-check" options={{ headerShown: false }} />
-                <Stack.Screen name="(auth)" options={{ headerShown: false }} />
-                <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-                <Stack.Screen name="order-details" options={{ headerShown: false }} />
-                <Stack.Screen name="modal" options={{ presentation: 'modal' }} />
+              <Stack
+                screenOptions={{
+                  headerShown: false,
+                }}
+              >
+                <Stack.Screen name="index" />
+
+                <Stack.Screen name="auth-check" />
+
+                <Stack.Screen name="(auth)" />
+
+                <Stack.Screen name="(tabs)" />
+
+                <Stack.Screen name="order-details" />
+
+                <Stack.Screen
+                  name="modal"
+                  options={{
+                    presentation: "modal",
+                  }}
+                />
               </Stack>
             </BadgeProvider>
           </CartProvider>
@@ -127,6 +188,21 @@ export default function RootLayout() {
 }
 
 const styles = StyleSheet.create({
-  splashContainer: { flex: 1, backgroundColor: '#C41E26', justifyContent: 'center', alignItems: 'center' },
-  splashLogo: { width: '100%', height: undefined, aspectRatio: 1, resizeMode: 'contain' },
+  splashContainer: {
+    flex: 1,
+
+    backgroundColor: "#C41E26",
+
+    justifyContent: "center",
+
+    alignItems: "center",
+  },
+
+  splashLogo: {
+    width: "100%",
+
+    aspectRatio: 1,
+
+    resizeMode: "contain",
+  },
 });

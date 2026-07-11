@@ -226,12 +226,24 @@ export default function SignIn() {
                             )}
                         </TouchableOpacity>
 
+
+  <TouchableOpacity
+                            style={styles.skipButton}
+                            onPress={() => router.replace('/(tabs)/menu')}
+                            disabled={isLoading}
+                        >
+                            <Text style={styles.skipButtonText}>Skip & Browse Menu</Text>
+                        </TouchableOpacity>
+
+ 
                         <View style={styles.signUpContainer}>
                             <Text style={styles.signUpText}>Don&apos;t have an account? </Text>
                             <TouchableOpacity onPress={() => router.replace('/(auth)/sign-up')}>
                                 <Text style={styles.signUpLink}>Sign Up</Text>
                             </TouchableOpacity>
                         </View>
+
+                        
                     </View>
                 </ScrollView>
             </SafeAreaView>
@@ -262,6 +274,18 @@ const styles = StyleSheet.create({
         marginBottom: 15,
         paddingHorizontal: 5,
     },
+        skipButton: {
+        marginTop: 15,
+        padding: 10,
+        alignItems: 'center',
+    },
+    skipButtonText: {
+            color: '#666',
+        fontSize: 16,
+        fontWeight: '600',
+        textDecorationLine: 'underline',
+   },
+ 
     checkbox: {
         marginRight: 10,
     },
