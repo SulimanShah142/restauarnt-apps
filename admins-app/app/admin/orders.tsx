@@ -738,7 +738,7 @@ function OrdersScreenContent() {
       </TouchableOpacity>
       <TouchableOpacity
         style={[styles.actionButton, styles.rejectButton]}
-        onPress={() => handleRejectOrder(item)}
+        onPress={() => confirmCancelOrder(item)}
         disabled={loading}
       >
         <Text style={styles.actionButtonText}>❌ Reject</Text>
@@ -747,39 +747,49 @@ function OrdersScreenContent() {
   </View>
 )}
 
-          {item.status === 'confirmed' || item.status === 'on_the_way'  && (
-            <View>
-              <View style={styles.actionRow}>
-                {!item.deliveryPersonId ? (
-                  <TouchableOpacity
-                    style={[styles.actionButton, styles.assignButton]}
-                    onPress={() => showDeliveryAssignmentModal(item)}
-                    disabled={loading}
-                  >
-                    <Text style={styles.actionButtonText}>🚚 Assign Order</Text>
-                  </TouchableOpacity>
-                ) : (
-                  <TouchableOpacity
-                    style={[styles.actionButton, styles.reassignButton]}
-                    onPress={() => showDeliveryAssignmentModal(item)}
-                    disabled={loading}
-                  >
-                    <Text style={styles.actionButtonText}>🔄 Reassign</Text>
-                  </TouchableOpacity>
-                )}
-                <TouchableOpacity
-                  style={[styles.actionButton, styles.cancelOrderButton]}
-                  onPress={() => handleCancelOrder(item)}
-                  disabled={loading}
-                >
-                  <Text style={styles.actionButtonText}>❌ Cancel Order</Text>
-                </TouchableOpacity>
-              </View>
-              {item.deliveryPersonName && (
-                <Text style={styles.deliveryPersonText}>Delivery: {item.deliveryPersonName}</Text>
-              )}
-            </View>
-          )}
+       {(item.status === 'confirmed' || item.status === 'on_the_way') && (
+  <View>
+    <View style={styles.actionRow}>
+      {!item.deliveryPersonId ? (
+        <TouchableOpacity
+          style={[styles.actionButton, styles.assignButton]}
+          onPress={() => showDeliveryAssignmentModal(item)}
+          disabled={loading}
+        >
+          <Text style={styles.actionButtonText}>
+            🚚 Assign Order
+          </Text>
+        </TouchableOpacity>
+      ) : (
+        <TouchableOpacity
+          style={[styles.actionButton, styles.reassignButton]}
+          onPress={() => showDeliveryAssignmentModal(item)}
+          disabled={loading}
+        >
+          <Text style={styles.actionButtonText}>
+            🔄 Reassign
+          </Text>
+        </TouchableOpacity>
+      )}
+
+      <TouchableOpacity
+        style={[styles.actionButton, styles.cancelOrderButton]}
+        onPress={() => handleCancelOrder(item)}
+        disabled={loading}
+      >
+        <Text style={styles.actionButtonText}>
+          ❌ Cancel Order
+        </Text>
+      </TouchableOpacity>
+    </View>
+
+    {item.deliveryPersonName && (
+      <Text style={styles.deliveryPersonText}>
+        Delivery: {item.deliveryPersonName}
+      </Text>
+    )}
+  </View>
+)}
 
           <TouchableOpacity
             style={[styles.actionButton, styles.viewDetailsButton]}
