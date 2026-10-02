@@ -3,7 +3,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { supabase } from '../lib/supabase';
 import { useRouter } from 'expo-router';
 import { useEffect, useState, useRef } from "react";
-import { syncOneSignalTokens } from '../utils/onesignal';
+import { initializeOneSignal, syncOneSignalTokens } from '../utils/onesignal';
 
 export default function AuthCheck() {
     const [isChecking, setIsChecking] = useState(true);
@@ -35,8 +35,10 @@ export default function AuthCheck() {
                     console.log('[AuthCheck] Session found, user:', session.user.id);
                     hasNavigatedRef.current = true;
 
-                    // Fire and forget OneSignal sync - don't block navigation
-                    syncOneSignalTokens().catch(e => console.error('[AuthCheck] OneSignal Sync Failed', e));
+                    // Initialize push notifications only after auth has restored.
+                    void initializeOneSignal()
+                        .then(() => syncOneSignalTokens())
+                        .catch(e => console.error('[AuthCheck] OneSignal startup failed', e));
 
                     // Navigate immediately so the UI doesn't freeze/crash
                     router.replace('/(tabs)/menu');

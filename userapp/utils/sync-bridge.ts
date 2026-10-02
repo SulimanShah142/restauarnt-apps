@@ -1,24 +1,17 @@
 // Sync Bridge for User App - Mobile Sync with Supabase
 // This file handles manual sync between Expo SQLite and Supabase on mobile platforms
-import { createClient } from '@supabase/supabase-js';
 import * as SQLite from 'expo-sqlite';
 import { TABLES } from '../db/schema';
 import { cacheImage } from './image-cache';
 import { imageUrlToBase64, base64ToDataUrl } from './image-base64-utils';
 
-// Get environment variables
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
-
-// Initialize Supabase client
-const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-
+import { supabase as supabaseClient } from '../lib/supabase';
 
 // Helper: Check if online
 const checkOnline = async (): Promise<boolean> => {
   try {
     const startTime = Date.now();
-    const response = await fetch(SUPABASE_URL, { method: 'HEAD', mode: 'no-cors' });
+    const response = await fetch(supabaseClient.supabaseUrl, { method: 'HEAD', mode: 'no-cors' });
     const duration = Date.now() - startTime;
     return true;
   } catch (error) {

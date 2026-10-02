@@ -4,7 +4,7 @@
 import { DatabaseInterface } from './types';
 import { TABLES, SQLITE_SCHEMA } from './schema';
 import { imageUrlToBase64 } from '../utils/image-base64-utils';
-import { createClient } from '@supabase/supabase-js';
+import { supabase as supabaseClient } from '../lib/supabase';
 
 // Type declarations for web globals
 declare const window: any;
@@ -16,11 +16,6 @@ declare const navigator: any;
 // IndexedDB database name and version
 const DB_NAME = 'userapp_db';
 const DB_VERSION = 1;
-
-// Supabase client
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 // Open/create IndexedDB database
 const openDB = (): Promise<any> => {

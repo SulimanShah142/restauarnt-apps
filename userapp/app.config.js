@@ -10,7 +10,7 @@ module.exports = function(config) {
   return Object.assign({}, config, {
     name: 'AYAR Food Delivery',
     slug: 'ayar-food-delivery',
-    version: '1.0.3',
+    version: '1.0.4',
     orientation: 'portrait',
     icon: './assets/images/splash-screen.jpg',
     scheme: 'ayarfood',
@@ -77,14 +77,19 @@ module.exports = function(config) {
       'expo-location',
       'expo-sqlite',
       'expo-system-ui',
-      [
+           [
         'expo-build-properties',
         {
           android: {
             buildArchs: ['arm64-v8a', 'armeabi-v7a'],
             minSdkVersion: 26,
-            compileSdkVersion: 35,
-            targetSdkVersion: 35,
+            // Bumped to 36 to satisfy Google Play target API rules
+            compileSdkVersion: 36,
+            targetSdkVersion: 36,
+            // Added to solve the DEX Code Optimization requirement
+            enableMinifyInReleaseBuilds: true,
+            enableShrinkResourcesInReleaseBuilds: true,
+          
             packagingOptions: {
               pickFirst: ['lib/x86/libc++_shared.so', 'lib/x86_64/libc++_shared.so', 'lib/armeabi-v7a/libc++_shared.so', 'lib/arm64-v8a/libc++_shared.so'],
               exclude: ['**/x86/**', '**/x86_64/**'],
@@ -95,6 +100,7 @@ module.exports = function(config) {
           },
         },
       ],
+
       ...(hasGoogleServices ? ['./plugins/withFirebase'] : []),
       [
         'onesignal-expo-plugin',
@@ -135,11 +141,13 @@ module.exports = function(config) {
       },
       mapTilerKey: process.env.EXPO_PUBLIC_MAPTILER_KEY || '5MOQerQLiYgmkWeWHRd7',
       locationIqKey: process.env.EXPO_PUBLIC_LOCATION_IQ_TOKEN || 'pk.ac03476010699238dcadcb4f0eb9a998',
+      supabaseUrl: process.env.EXPO_PUBLIC_SUPABASE_URL || 'https://gjyipzhhgxgumgbnpikg.supabase.co',
+      supabaseAnonKey: process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.EXPO_PUBLIC_SUPABASE_KEY || 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdqeWlwemhoZ3hndW1nYm5waWtnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzOTY3MjksImV4cCI6MjA4NTk3MjcyOX0.0K6bROYWE_EXwNFioSmN-xSDZ3Lm0Cx6m0wwl6YtYhc',
       // OneSignal App ID - CRITICAL for push notifications
       onesignalAppId: process.env.ONESIGNAL_APP_ID || process.env.EXPO_PUBLIC_ONESIGNAL_APP_ID || '38e20d47-839b-4944-8455-daf65977aaf9',
     },
     owner: 'slliman',
-    runtimeVersion: '1.1.2',
+    runtimeVersion: '1.1.3',
     updates: {
       url: 'https://u.expo.dev/8c7d7420-9fbc-4cf3-a4b9-a23023b81d37',
       fallbackToCacheTimeout: 30000,

@@ -3,12 +3,7 @@
 
 import { getDatabase } from '../db';
 import * as Network from 'expo-network';
-import { createClient } from '@supabase/supabase-js';
-
-// Initialize Supabase client
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
-const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+import { supabase as supabaseClient } from './supabase';
 
 // Track sync state
 let isSyncing = false;

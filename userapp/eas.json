@@ -28,10 +28,10 @@
     },
     "production": {
       "autoIncrement": true,
-      "distribution": "store",
+      "distribution": "internal",
       "android": {
         "resourceClass": "default",
-        "buildType": "app-bundle"
+        "buildType": "apk"
       },
       "ios": {
         "distribution": "store"

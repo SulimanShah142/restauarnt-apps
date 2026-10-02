@@ -1,18 +1,12 @@
 // Enhanced Sync Service - Complete sync for ALL data types
 // Syncs: restaurants, menu items, menu categories, orders, user profiles, cart items, addresses, feedback
 
-import { createClient } from '@supabase/supabase-js';
 import * as Network from 'expo-network';
 import * as SQLite from 'expo-sqlite';
 import { TABLES } from '../db/schema';
 import { imageUrlToBase64 } from '../utils/image-base64-utils';
 
-// Get environment variables
-const SUPABASE_URL = process.env.EXPO_PUBLIC_SUPABASE_URL || '';
-const SUPABASE_ANON_KEY = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || '';
-
-// Initialize Supabase client
-const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+import { supabase as supabaseClient } from './supabase';
 
 // Sync state management
 export interface SyncState {

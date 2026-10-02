@@ -1,18 +1,29 @@
 import 'react-native-url-polyfill/auto';
 import { createClient } from '@supabase/supabase-js';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import Constants from 'expo-constants';
 
-// Supabase configuration with fallback
+const FALLBACK_SUPABASE_URL = 'https://gjyipzhhgxgumgbnpikg.supabase.co';
+const FALLBACK_SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdqeWlwemhoZ3hndW1nYm5waWtnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzOTY3MjksImV4cCI6MjA4NTk3MjcyOX0.0K6bROYWE_EXwNFioSmN-xSDZ3Lm0Cx6m0wwl6YtYhc';
+
 const getSupabaseConfig = () => {
-  let supabaseUrl = process.env.EXPO_PUBLIC_SUPABASE_URL;
-  let supabaseAnonKey = process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY || process.env.EXPO_PUBLIC_SUPABASE_KEY;
+  const extra = ((Constants.expoConfig as any)?.extra ?? (Constants.manifest as any)?.extra ?? {}) as {
+    supabaseUrl?: string;
+    supabaseAnonKey?: string;
+  };
 
-  // Final hardcoded fallback (ensures app never crashes due to missing config)
-  if (!supabaseUrl || !supabaseAnonKey) {
-    console.warn('[Supabase] Using fallback credentials');
-    supabaseUrl = 'https://gjyipzhhgxgumgbnpikg.supabase.co';
-    supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImdqeWlwemhoZ3hndW1nYm5waWtnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzAzOTY3MjksImV4cCI6MjA4NTk3MjcyOX0.0K6bROYWE_EXwNFioSmN-xSDZ3Lm0Cx6m0wwl6YtYhc';
-  }
+  const supabaseUrl =
+    process.env.EXPO_PUBLIC_SUPABASE_URL ||
+    process.env.SUPABASE_URL ||
+    extra.supabaseUrl ||
+    FALLBACK_SUPABASE_URL;
+
+  const supabaseAnonKey =
+    process.env.EXPO_PUBLIC_SUPABASE_ANON_KEY ||
+    process.env.EXPO_PUBLIC_SUPABASE_KEY ||
+    process.env.SUPABASE_ANON_KEY ||
+    extra.supabaseAnonKey ||
+    FALLBACK_SUPABASE_ANON_KEY;
 
   return { url: supabaseUrl, anonKey: supabaseAnonKey };
 };

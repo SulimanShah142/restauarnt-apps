@@ -8,7 +8,7 @@ import { Platform } from 'react-native';
 import { getDatabase } from '../database';
 import type { DatabaseInterface } from '../db/types';
 
-const DatabaseContext = createContext<DatabaseInterface | null>(null);
+const DatabaseContext = createContext<DatabaseInterface | null | undefined>(undefined);
 
 interface DatabaseProviderProps {
   children: React.ReactNode;
@@ -41,25 +41,6 @@ export const DatabaseProvider: React.FC<DatabaseProviderProps> = ({ children }) 
     initializeDatabase();
   }, []);
 
-  if (loading) {
-    console.log('[UserAppDB-Context] Still loading...');
-    return (
-      <React.Fragment>
-        {children}
-      </React.Fragment>
-    );
-  }
-
-  if (error) {
-    console.error('[UserAppDB-Context] Error state:', error.message);
-    return (
-      <React.Fragment>
-        {children}
-      </React.Fragment>
-    );
-  }
-
-  console.log('[UserAppDB-Context] Provider ready');
   return (
     <DatabaseContext.Provider value={database}>
       {children}
@@ -69,11 +50,9 @@ export const DatabaseProvider: React.FC<DatabaseProviderProps> = ({ children }) 
 
 export const useDatabase = (): DatabaseInterface | null => {
   const context = useContext(DatabaseContext);
-  if (context === null) {
-    console.error('[useDatabase] Used outside DatabaseProvider or database not initialized');
-    throw new Error('useDatabase must be used within a DatabaseProvider and database must be initialized');
+  if (context === undefined) {
+    throw new Error('useDatabase must be used within a DatabaseProvider');
   }
-  console.log('[useDatabase] Returning database instance');
   return context;
 };
 

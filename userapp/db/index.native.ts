@@ -9,27 +9,30 @@ const SCHEMA_VERSION = 4;
 
 // Initialize database
 let db: SQLite.SQLiteDatabase | null = null;
+let initializationPromise: Promise<void> | null = null;
 
 export const getDatabase = async (): Promise<DatabaseInterface> => {
   if (!db) {
-    db = await SQLite.openDatabaseAsync('userapp.db');
+    if (!initializationPromise) {
+      initializationPromise = (async () => {
+        const openedDatabase = await SQLite.openDatabaseAsync('userapp.db');
 
-    // Check schema version
-    let currentVersion = 0;
-    try {
-      const result = await db.getFirstAsync<{ version: number }>(
-        'SELECT version FROM schema_version LIMIT 1'
-      );
-      currentVersion = result?.version || 0;
-    } catch (e) {
-      // Table doesn't exist yet
-      currentVersion = 0;
-    }
+        // Check schema version
+        let currentVersion = 0;
+        try {
+          const result = await openedDatabase.getFirstAsync<{ version: number }>(
+            'SELECT version FROM schema_version LIMIT 1'
+          );
+          currentVersion = result?.version || 0;
+        } catch (e) {
+          // Table doesn't exist yet
+          currentVersion = 0;
+        }
 
-    // If schema version changed, drop all tables and recreate
-    if (currentVersion !== SCHEMA_VERSION) {
-      // Drop all tables
-      await db.execAsync(`
+        // If schema version changed, drop all tables and recreate
+        if (currentVersion !== SCHEMA_VERSION) {
+          // Drop all tables
+          await openedDatabase.execAsync(`
         DROP TABLE IF EXISTS ${TABLES.ORDER_ITEMS};
         DROP TABLE IF EXISTS ${TABLES.ORDERS};
         DROP TABLE IF EXISTS ${TABLES.CART_ITEMS};
@@ -45,16 +48,25 @@ export const getDatabase = async (): Promise<DatabaseInterface> => {
         DROP TABLE IF EXISTS sync_log;
         DROP TABLE IF EXISTS schema_version;
       `);
+        }
+
+        // Create tables using the shared schema
+        await openedDatabase.execAsync(SQLITE_SCHEMA);
+
+        // Update schema version (id must be 1 due to CHECK constraint)
+        await openedDatabase.runAsync(
+          'INSERT OR REPLACE INTO schema_version (id, version) VALUES (1, ?)',
+          [SCHEMA_VERSION]
+        );
+
+        db = openedDatabase;
+      })().catch((error) => {
+        initializationPromise = null;
+        throw error;
+      });
     }
 
-    // Create tables using the shared schema
-    await db.execAsync(SQLITE_SCHEMA);
-
-    // Update schema version (id must be 1 due to CHECK constraint)
-    await db.runAsync(
-      'INSERT OR REPLACE INTO schema_version (id, version) VALUES (1, ?)',
-      [SCHEMA_VERSION]
-    );
+    await initializationPromise;
   }
 
   return {
