@@ -165,6 +165,16 @@ const syncMenuDataForRestaurants = async (restaurantIds: string[]): Promise<void
 };
 
 export const restaurantService = {
+  getCachedRestaurants: async (): Promise<Restaurant[]> => {
+    try {
+      const db = await getDatabase();
+      const restaurants = await db.getRestaurants();
+      return restaurants.filter(r => r.is_active !== false && r.is_available !== false);
+    } catch (error) {
+      return [];
+    }
+  },
+
   // Get all restaurants - Fetches from Supabase FIRST when online, fallback to local DB when offline
   getAllRestaurants: async (options?: { forceSync?: boolean; userId?: string }): Promise<Restaurant[]> => {
 
@@ -180,7 +190,7 @@ export const restaurantService = {
         // When forceSync is true, ALWAYS fetch regardless of cooldown or sync state
         const shouldFetch = options?.forceSync 
           ? true 
-          : ((now - lastSyncTime > SYNC_COOLDOWN_MS) || !isSyncing);
+          : ((now - lastSyncTime > SYNC_COOLDOWN_MS) && !isSyncing);
 
 
         if (shouldFetch) {
@@ -199,71 +209,68 @@ export const restaurantService = {
           try {
             console.log('[RestaurantService] 🌐 Fetching from Supabase (forceSync:', options?.forceSync, ')');
 
-            // Fetch ALL restaurants from Supabase
-            const { data: restaurants, error } = await supabaseClient
+            // Avoid downloading embedded image data for the restaurant list.
+            let restaurantResponse = await supabaseClient
               .from('restaurants')
-              .select('*')
+              .select('id, name, description, image_url, is_active, is_available, created_at, updated_at, latitude, longitude, owner_id, opening_time, closing_time, cuisine_type, address, phone, email, rating, delivery_time, delivery_fee, minimum_order, estimated_delivery_time')
               .is('deleted_at', null)
               .eq('is_active', true)
               .eq('is_available', true)
               .order('updated_at', { ascending: false });
 
-            if (error) {
-              console.error('[RestaurantService] ❌ Supabase error:', error);
-              throw error;
+            if (restaurantResponse.error) {
+              console.warn('[RestaurantService] Narrow restaurant query failed; retrying with all columns:', restaurantResponse.error.message);
+              restaurantResponse = await supabaseClient
+                .from('restaurants')
+                .select('*')
+                .is('deleted_at', null)
+                .eq('is_active', true)
+                .eq('is_available', true)
+                .order('updated_at', { ascending: false }) as typeof restaurantResponse;
             }
 
+            if (restaurantResponse.error) {
+              console.error('[RestaurantService] ❌ Supabase error:', restaurantResponse.error);
+              throw restaurantResponse.error;
+            }
 
-            if (restaurants && restaurants.length > 0) {
-              console.log('[RestaurantService] ✅ Fetched', restaurants.length, 'restaurants from Supabase');
+            const fetchedRestaurants = (restaurantResponse.data || []) as unknown as Restaurant[];
 
-              // Clear existing restaurants first (complete reset)
-              await db.runAsync?.('DELETE FROM restaurants');
+            if (fetchedRestaurants.length > 0) {
+              console.log('[RestaurantService] ✅ Fetched', fetchedRestaurants.length, 'restaurants from Supabase');
 
-              // Insert fresh data
-              let insertCount = 0;
-              for (const restaurant of restaurants) {
-                await db.runAsync?.(
-                  `INSERT INTO restaurants (id, name, description, image_url, image_base64, is_active, is_available, created_at, updated_at, latitude, longitude, owner_id, opening_time, closing_time, cuisine_type, address, phone, email, rating, delivery_time, delivery_fee, minimum_order, estimated_delivery_time)
-                   VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-                  [
-                    restaurant.id,
-                    restaurant.name,
-                    restaurant.description,
-                    restaurant.image_url,
-                    restaurant.image_base64 || null,
-                    restaurant.is_active ? 1 : 0,
-                    restaurant.is_available ? 1 : 0,
-                    restaurant.created_at,
-                    restaurant.updated_at,
-                    restaurant.latitude || null,
-                    restaurant.longitude || null,
-                    restaurant.owner_id || null,
-                    restaurant.opening_time || null,
-                    restaurant.closing_time || null,
-                    restaurant.cuisine_type || null,
-                    restaurant.address || null,
-                    restaurant.phone || null,
-                    restaurant.email || null,
-                    restaurant.rating || 0,
-                    restaurant.delivery_time || null,
-                    restaurant.delivery_fee || null,
-                    restaurant.minimum_order || null,
-                    restaurant.estimated_delivery_time || null
-                  ]
-                );
-                insertCount++;
-              }
-              console.log('[RestaurantService] 💾 Saved', insertCount, 'restaurants to local DB');
+              void (async () => {
+                try {
+                  const cachedRestaurants = await db.getRestaurants();
+                  const cachedImages = new Map(cachedRestaurants.map(restaurant => [restaurant.id, restaurant.image_base64]));
+                  await db.runAsync?.('DELETE FROM restaurants');
+                  for (const restaurant of fetchedRestaurants) {
+                    await db.runAsync?.(
+                      `INSERT INTO restaurants (id, name, description, image_url, image_base64, is_active, is_available, created_at, updated_at, latitude, longitude, owner_id, opening_time, closing_time, cuisine_type, address, phone, email, rating, delivery_time, delivery_fee, minimum_order, estimated_delivery_time)
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                      [
+                        restaurant.id, restaurant.name, restaurant.description, restaurant.image_url,
+                        cachedImages.get(restaurant.id) || null,
+                        restaurant.is_active ? 1 : 0, restaurant.is_available ? 1 : 0,
+                        restaurant.created_at, restaurant.updated_at, restaurant.latitude || null,
+                        restaurant.longitude || null, restaurant.owner_id || null,
+                        restaurant.opening_time || null, restaurant.closing_time || null,
+                        restaurant.cuisine_type || null, restaurant.address || null,
+                        restaurant.phone || null, restaurant.email || null, restaurant.rating || 0,
+                        restaurant.delivery_time || null, restaurant.delivery_fee || null,
+                        restaurant.minimum_order || null, restaurant.estimated_delivery_time || null
+                      ]
+                    );
+                  }
+                  await syncMenuDataForRestaurants(fetchedRestaurants.map(r => r.id));
+                } catch (cacheError) {
+                  console.error('[RestaurantService] Background cache update failed:', cacheError);
+                } finally {
+                  isSyncing = false;
+                }
+              })();
 
-              isSyncing = false;
-
-              // Also sync menu items and categories for all restaurants
-              await syncMenuDataForRestaurants(restaurants.map(r => r.id));
-
-
-              // Return fresh data from Supabase
-              return restaurants as Restaurant[];
+              return fetchedRestaurants;
             } else {
               console.log('[RestaurantService] ⚠️ Supabase returned 0 restaurants, falling back to local cache');
               isSyncing = false;

@@ -135,9 +135,15 @@ export default function MenuScreen() {
     initialLoadDoneRef.current = true;
 
     try {
+      const cachedRestaurants = await restaurantService.getCachedRestaurants();
+      if (cachedRestaurants.length > 0) {
+        setRestaurants(cachedRestaurants);
+        dataLoadedRef.current = true;
+        setLoading(false);
+      }
+
       const loadedRestaurants = await restaurantService.getAllRestaurants({
-        userId: session?.user?.id,
-        forceSync: true
+        userId: session?.user?.id
       });
 
       console.log('[Menu] Loaded restaurants:', loadedRestaurants.length);
@@ -272,19 +278,6 @@ export default function MenuScreen() {
 
     return () => clearTimeout(adTimer);
   }, []); // Empty deps - only runs once on mount
-
-  // Show loading only while auth is still initializing (before it has a definitive answer)
-  // Skip this if we're already loading restaurants ourselves
-  if (isInitializing && restaurants.length === 0) {
-    return (
-      <SafeAreaView style={styles.safeArea}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#C41E26" />
-          <Text style={styles.loadingText}>Loading menu...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
 
   // Show loading for food items when restaurant selected
   const showFoodLoading = selectedRestaurant && isLoadingFoodItems;
@@ -439,6 +432,18 @@ export default function MenuScreen() {
       loadMenuData();
     }
   }, [selectedRestaurant, loadMenuData]);
+
+  // Keep the loading gate after hooks so auth transitions preserve hook order.
+  if (isInitializing && restaurants.length === 0) {
+    return (
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#C41E26" />
+          <Text style={styles.loadingText}>Loading menu...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.safeArea}>
