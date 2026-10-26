@@ -199,17 +199,22 @@ export async function syncOneSignalTokens() {
     const granted = await OneSignal.Notifications.requestPermission(true);
     console.log('[OneSignal] Permission granted:', granted);
 
+    // 🛑 FIX 1: If permission is denied, exit early and do NOT opt-in
     if (!granted) {
-      console.log('[OneSignal] ❌ Permission Denied');
+      console.log('[OneSignal] ❌ Permission Denied by user');
       return;
     }
 
-    // 4. Force Opt-In - this triggers async token generation
+    // 🛑 FIX 2: Add a slight delay (300ms) to let the Android OS 
+    // finish registration before forcing the push subscription opt-in
+    await new Promise(resolve => setTimeout(resolve, 300));
+
+    // 4. Force Opt-In - this triggers async token generation safely now
     console.log('[OneSignal] 🚀 Opting in...');
     OneSignal.User.pushSubscription.optIn();
     console.log('[OneSignal] ✅ Opted in - tokens will arrive via subscription event');
 
-    // 5. Check if tokens are already available (rare, but possible if re-login)
+    // 5. Check if tokens are already available
     await new Promise(resolve => setTimeout(resolve, 2000)); // Wait 2 seconds
     
     const pushSub = OneSignal.User.pushSubscription as any;
@@ -225,13 +230,13 @@ export async function syncOneSignalTokens() {
       await saveTokensToDatabase(id, token);
     } else {
       console.log('[OneSignal] ⏳ Tokens not ready yet - waiting for subscription event...');
-      console.log('[OneSignal] The subscription observer will save them automatically when they arrive');
     }
   } catch (error: any) {
     console.error('[OneSignal] ❌ Sync error:', error);
     throw error;
   }
 }
+
 
 /**
  * Clear OneSignal tokens on logout

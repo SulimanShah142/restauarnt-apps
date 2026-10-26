@@ -2,7 +2,7 @@
 // Uses OneSignal for notifications instead of Supabase Realtime
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { supabase } from '@/lib/supabase';
-import * as Notifications from 'expo-notifications';
+import { OneSignal } from 'react-native-onesignal'; // 📌 Swapped expo-notifications out for OneSignal
 
 interface BadgeContextType {
   newOrdersCount: number;
@@ -45,64 +45,22 @@ export function BadgeProvider({ children }: { children: React.ReactNode }) {
     loadSessionEmail();
   }, []);
 
-  // Load initial badge count when session changes
-  useEffect(() => {
-    const loadBadgeCount = async () => {
-      if (!sessionEmail) {
-        setNewOrdersCount(0);
-        return;
-      }
-
-      try {
-        // Count pending/new orders (not delivered/cancelled)
-        const { data, error } = await supabase
-          .from('orders')
-          .select('id', { count: 'exact', head: true })
-          .in('status', ['pending', 'confirmed', 'preparing', 'ready', 'on_the_way']);
-
-        if (error) {
-          console.error('[AdminBadge] Error loading badge count:', error);
-          setNewOrdersCount(0);
-          return;
-        }
-
-        const count = data?.length || 0;
-        setNewOrdersCount(count);
-      } catch (error) {
-        console.error('[AdminBadge] Error loading badge count:', error);
-        setNewOrdersCount(0);
-      }
-    };
-
-    loadBadgeCount();
-
-    // Setup OneSignal notification tap listener for badge updates
-    const subscription = Notifications.addNotificationResponseReceivedListener((response) => {
-      const data = response.notification.request.content.data;
-      // Refresh badge when user taps an order notification
-      if (data?.type === 'new_order' || data?.type === 'order_update' || data?.orderId || data?.order_id) {
-        loadBadgeCount();
-      }
-    });
-
-    return () => {
-      subscription.remove();
-    };
-  }, [sessionEmail]);
-
-  const refreshBadge = async () => {
+  // Helper logic to run count validation
+  const loadBadgeCount = async () => {
     if (!sessionEmail) {
       setNewOrdersCount(0);
       return;
     }
 
     try {
+      // Count pending/new orders (not delivered/cancelled)
       const { data, error } = await supabase
         .from('orders')
         .select('id', { count: 'exact', head: true })
         .in('status', ['pending', 'confirmed', 'preparing', 'ready', 'on_the_way']);
 
       if (error) {
+        console.error('[AdminBadge] Error loading badge count:', error);
         setNewOrdersCount(0);
         return;
       }
@@ -110,9 +68,46 @@ export function BadgeProvider({ children }: { children: React.ReactNode }) {
       const count = data?.length || 0;
       setNewOrdersCount(count);
     } catch (error) {
-      console.error('[AdminBadge] Error refreshing badge:', error);
+      console.error('[AdminBadge] Error loading badge count:', error);
       setNewOrdersCount(0);
     }
+  };
+
+  // Load initial badge count when session changes and attach OneSignal listeners
+  useEffect(() => {
+    loadBadgeCount();
+
+    // 📡 1. Refresh badge if notification arrives while the user is inside the app
+    const handleForegroundNotification = (event: any) => {
+      const data = event.notification.additionalData;
+      console.log('[AdminBadge] Foreground notification received:', data);
+      if (data?.type === 'new_order' || data?.type === 'order_update' || data?.orderId || data?.order_id) {
+        loadBadgeCount();
+      }
+    };
+
+    // 📡 2. Refresh badge when the user clicks an external banner notification
+    const handleNotificationClick = (event: any) => {
+      const data = event.notification.additionalData;
+      console.log('[AdminBadge] Notification banner clicked:', data);
+      if (data?.type === 'new_order' || data?.type === 'order_update' || data?.orderId || data?.order_id) {
+        loadBadgeCount();
+      }
+    };
+
+    // Attach listeners to OneSignal Notifications namespace
+    OneSignal.Notifications.addEventListener('foregroundWillDisplay', handleForegroundNotification);
+    OneSignal.Notifications.addEventListener('click', handleNotificationClick);
+
+    return () => {
+      // Cleanup observers cleanly
+      OneSignal.Notifications.removeEventListener('foregroundWillDisplay', handleForegroundNotification);
+      OneSignal.Notifications.removeEventListener('click', handleNotificationClick);
+    };
+  }, [sessionEmail]);
+
+  const refreshBadge = async () => {
+    await loadBadgeCount();
   };
 
   return (
@@ -130,4 +125,4 @@ export function useBadge() {
     return { newOrdersCount: 0, refreshBadge: async () => {} };
   }
   return context;
-};
+}

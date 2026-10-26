@@ -7,6 +7,7 @@ import { adminApiService } from '@/lib/admin-api-service';
 import NotificationPermissionPrompt from '@/components/NotificationPermissionPrompt';
 import DatePicker from '@/components/DatePicker';
 import UnifiedMap from '@/components/UnifiedMap';
+import FullscreenMap from '@/components/FullscreenMap';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
@@ -72,6 +73,7 @@ function OrdersScreenContent() {
   const [showDeliveryAssignModal, setShowDeliveryAssignModal] = useState(false);
   const [selectedOrderForDelivery, setSelectedOrderForDelivery] = useState<Order | null>(null);
   const [selectedDeliveryPerson, setSelectedDeliveryPerson] = useState<string | null>(null);
+  const [showFullscreenMap, setShowFullscreenMap] = useState(false);
   const [loading, setLoading] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
@@ -248,6 +250,7 @@ function OrdersScreenContent() {
         .select(`
           id,
           order_number,
+          delivery_person_id,
           status,
           total_amount,
           subtotal,
@@ -404,17 +407,40 @@ function OrdersScreenContent() {
 
       if (deliveryPersonsError) throw deliveryPersonsError;
 
-      const transformedDeliveryPersons: DeliveryPerson[] = (deliveryPersonsData || []).map((person: any) => ({
-        id: person.user_id || person.id,
-        deliveryPersonTableId: person.id,
-        name: person.name || 'Unknown',
-        status: person.is_available ? 'free' : 'busy',
-        location: person.current_location || (person.current_latitude && person.current_longitude ? {
+    const transformedDeliveryPersons: DeliveryPerson[] =
+(deliveryPersonsData || []).map((person:any)=>({
+
+    // IMPORTANT:
+    // this must match delivery_persons.id
+    id: person.id,
+
+    deliveryPersonTableId: person.id,
+
+    userId: person.user_id,
+
+    name: person.name || 'Unknown',
+
+    status: person.is_available
+      ? 'free'
+      : 'busy',
+
+    location:
+      person.current_location ||
+      (
+        person.current_latitude &&
+        person.current_longitude
+        ?
+        {
           latitude: person.current_latitude,
-          longitude: person.current_longitude,
-        } : undefined),
-        profilePictureUrl: person.image_url,
-      }));
+          longitude: person.current_longitude
+        }
+        :
+        undefined
+      ),
+
+    profilePictureUrl: person.image_url,
+
+}));
 
       setDeliveryPersons(transformedDeliveryPersons);
     } catch (error) {
@@ -429,163 +455,13 @@ function OrdersScreenContent() {
     fetchDeliveryPersons();
   }, []);
 
-  // Set up Realtime subscription for orders changes
-  useEffect(() => {
+useEffect(() => {
+  const interval = setInterval(() => {
+    fetchOrders();
+  }, 30000);
 
-    // Subscribe to orders changes
-    const ordersChannel = supabase
-      .channel('orders-sync')
-      .on(
-        'postgres_changes',
-        {
-          event: '*', // Listen to all events
-          schema: 'public',
-          table: 'orders'
-        },
-        async (payload: any) => {
-
-          // NEW ORDER - Show notification with alarm sound
-          if (payload.eventType === 'INSERT' && payload.new) {
-            const orderNumber = payload.new?.order_number?.substring(0, 8) || payload.new?.id?.substring(0, 8);
-            const customerName = payload.new?.customer_name || payload.new?.user_name || 'Customer';
-            const totalAmount = payload.new?.total_amount || 0;
-
-
-            // Show in-app notification banner
-            setNotification(prev => {
-              return {
-                ...prev,
-                visible: true,
-                title: '🔔 New Order Received!',
-                message: `${customerName} ordered AFG ${totalAmount} (Order #${orderNumber})`,
-                type: 'order',
-              };
-            });
-
-            // Auto-hide after 5 seconds
-            setTimeout(() => {
-              setNotification(prev => ({ ...prev, visible: false }));
-            }, 5000);
-
-            // Send BACKGROUND PUSH notification (works even when app is closed!)
-            try {
-              const { sendNewOrderPushNotification } = await import('@/lib/push-notification-service');
-              
-              const result = await sendNewOrderPushNotification({
-                adminEmail: 'Mohammadseyar885@gmail.com',
-                orderId: payload.new?.id,
-                orderNumber: orderNumber,
-                customerName: customerName,
-                totalAmount: totalAmount
-              });
-              
-              if (result.success) {
-                console.warn('[Orders Realtime] ⚠️ Push notification failed:', result.error);
-              }
-            } catch (error) {
-              console.error('[Orders Realtime] ❌ Error sending push notification:', error);
-              console.error('[Orders Realtime] Error details:', JSON.stringify(error, null, 2));
-            }
-            
-            // Also send local notification for foreground (backup)
-            try {
-              const { sendLocalNotification } = await import('@/lib/notification-service');
-              await sendLocalNotification({
-                title: '🔔 New Order Received!',
-                body: `${customerName} ordered AFG ${totalAmount}. Please confirm the order.`,
-                type: 'order',
-                sound: true,
-                badge: 1,
-                data: {
-                  orderId: payload.new?.id,
-                  orderNumber: orderNumber,
-                  type: 'new-order',
-                  customerName: customerName,
-                  totalAmount: totalAmount
-                }
-              });
-            } catch (error) {
-              console.error('[Orders Realtime] ❌ Error sending local notification:', error);
-            }
-          }
-
-          // Show notification if order was delivered
-          if (payload.eventType === 'UPDATE' && payload.new?.status === 'delivered' && payload.old?.status !== 'delivered') {
-            const orderNumber = payload.new?.order_number?.substring(0, 8) || payload.new?.id?.substring(0, 8);
-
-
-            // Show in-app notification banner
-            setNotification(prev => ({
-              ...prev,
-              visible: true,
-              title: '✅ Order Delivered',
-              message: `Order #${orderNumber} has been delivered successfully!`,
-              type: 'success',
-            }));
-
-            // Auto-hide after 5 seconds
-            setTimeout(() => {
-              setNotification(prev => ({ ...prev, visible: false }));
-            }, 5000);
-
-            try {
-              const { sendLocalNotification } = await import('@/lib/notification-service');
-              await sendLocalNotification({
-                title: '✅ Order Delivered',
-                body: `Order #${orderNumber} has been delivered successfully!`,
-                type: 'success',
-                sound: true,
-                badge: 0,
-              });
-            } catch (error) {
-              console.error('[Orders] Error sending system notification:', error);
-            }
-          }
-
-          // Reload orders to sync changes
-          await fetchOrders();
-        }
-      )
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'order_items'
-        },
-        async (payload: any) => {
-          await fetchOrders();
-        }
-      )
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          console.error('[Orders Realtime] ❌ CHANNEL_ERROR - Realtime connection issue');
-          console.error('[Orders Realtime] 💡 This usually means:');
-          console.error('[Orders Realtime]    1. Realtime is not enabled in Supabase Dashboard');
-          console.error('[Orders Realtime]    2. Network connection issue');
-          console.error('[Orders Realtime]    3. Supabase project is paused');
-          console.error('[Orders Realtime] 📝 Run ENABLE_REALTIME_FOR_ORDERS.sql in Supabase SQL Editor');
-          console.error('[Orders Realtime] 🔄 Will retry connection in 5 seconds...');
-          
-          // Auto-retry connection after 5 seconds
-          setTimeout(() => {
-            // Channel will automatically attempt to reconnect
-          }, 5000);
-        } else if (status === 'TIMED_OUT') {
-          console.error('[Orders Realtime] ❌ TIMED_OUT - Connection timed out');
-          console.error('[Orders Realtime] 📶 Check your internet connection');
-          console.error('[Orders Realtime] 🔄 Will retry connection...');
-        } else if (status === 'CLOSED') {
-          console.warn('[Orders Realtime] ⚠️ CLOSED - Connection closed');
-          console.warn('[Orders Realtime] 🔄 Attempting to reconnect...');
-        }
-      });
-
-    // Cleanup subscription on unmount
-    return () => {
-      supabase.removeChannel(ordersChannel);
-    };
-  }, []);
+  return () => clearInterval(interval);
+}, []);
 
   // Update order status
   const updateOrderStatus = async (orderId: string, newStatus: string) => {
@@ -723,7 +599,13 @@ function OrdersScreenContent() {
         </View>
 
         <Text style={styles.totalAmount}>Total: AFG {item.totalAmount.toFixed(2)}</Text>
-        <Text style={styles.deliveryAddress}>Delivery: {item.deliveryAddress}</Text>
+        {item.customerName && (
+          <Text style={styles.customerMeta}>👤 {item.customerName}</Text>
+        )}
+        <Text style={styles.deliveryAddress}>📍 Delivery: {item.deliveryAddress}</Text>
+        {item.notes && (
+          <Text style={styles.customerNotes}>📝 {item.notes}</Text>
+        )}
 
         <View style={styles.orderActions}>
 {item.status !== 'delivered' && (
@@ -736,13 +618,13 @@ function OrdersScreenContent() {
       >
         <Text style={styles.actionButtonText}>✅ Confirm</Text>
       </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.actionButton, styles.rejectButton]}
-        onPress={() => confirmCancelOrder(item)}
-        disabled={loading}
-      >
-        <Text style={styles.actionButtonText}>❌ Reject</Text>
-      </TouchableOpacity>
+     <TouchableOpacity
+  style={[styles.actionButton, styles.rejectButton]}
+  onPress={() => handleCancelOrder(item)}
+  disabled={loading}
+>
+  <Text style={styles.actionButtonText}>❌ Reject</Text>
+</TouchableOpacity>
     </View>
   </View>
 )}
@@ -920,6 +802,22 @@ function OrdersScreenContent() {
     </Modal>
   );
 
+  const renderFullScreenMapModal = () => (
+    <FullscreenMap
+      role="ADMIN"
+      orderId={selectedOrder?.id}
+      restaurantCoords={mapRestaurantCoords}
+      userCoords={mapDriverCoords}
+      destinationCoords={mapDeliveryCoords}
+      userLocation={selectedOrder?.userLocation ? [selectedOrder.userLocation.latitude, selectedOrder.userLocation.longitude] : undefined}
+      restaurantName={mapRestaurantName}
+      userName={mapUserName}
+      agentName={selectedOrder?.deliveryPersonName}
+      isVisible={showFullscreenMap}
+      onClose={() => setShowFullscreenMap(false)}
+    />
+  );
+
   const renderDeliveryAssignmentModal = () => (
     <Modal
       animationType="slide"
@@ -1034,25 +932,33 @@ function OrdersScreenContent() {
           >
             {/* MAP ON TOP */}
             {selectedOrder && (
-              <View style={styles.mapContainer}>
-                <UnifiedMap
-                  role="ADMIN"
-                  orderId={selectedOrder.id}
-                  restaurantName={mapRestaurantName}
-                  userName={mapUserName}
-                  agentName={selectedOrder.deliveryPersonName}
-                  // Restaurant location (pickup point) - enables route drawing
-                  restaurantCoords={mapRestaurantCoords}
-                  // Driver location (real-time, updates every 50 meters)
-                  userCoords={mapDriverCoords}
-                  // Delivery location (destination) - enables route drawing
-                  destinationCoords={mapDeliveryCoords}
-                />
-                {hasRealTimeLocation && (
-                  <View style={styles.realtimeIndicator}>
-                    <Text style={styles.realtimeText}>📡 Live Tracking</Text>
-                  </View>
-                )}
+              <View>
+                <View style={styles.mapHeaderRow}>
+                  <Text style={styles.mapSectionTitle}>📍 Order Route</Text>
+                  <TouchableOpacity style={styles.fullViewButton} onPress={() => setShowFullscreenMap(true)}>
+                    <Text style={styles.fullViewButtonText}>🗺️ Full View</Text>
+                  </TouchableOpacity>
+                </View>
+                <View style={styles.mapContainer}>
+                  <UnifiedMap
+                    role="ADMIN"
+                    orderId={selectedOrder.id}
+                    restaurantName={mapRestaurantName}
+                    userName={mapUserName}
+                    agentName={selectedOrder.deliveryPersonName}
+                    // Restaurant location (pickup point) - enables route drawing
+                    restaurantCoords={mapRestaurantCoords}
+                    // Driver location (real-time, updates every 50 meters)
+                    userCoords={mapDriverCoords}
+                    // Delivery location (destination) - enables route drawing
+                    destinationCoords={mapDeliveryCoords}
+                  />
+                  {hasRealTimeLocation && (
+                    <View style={styles.realtimeIndicator}>
+                      <Text style={styles.realtimeText}>📡 Live Tracking</Text>
+                    </View>
+                  )}
+                </View>
               </View>
             )}
 
@@ -1098,6 +1004,13 @@ function OrdersScreenContent() {
                   <Text style={styles.detailLabel}>Delivery Address:</Text>
                   <Text style={styles.detailValue}>{selectedOrder.deliveryAddress}</Text>
                 </View>
+
+                {selectedOrder.notes && (
+                  <View style={styles.detailRow}>
+                    <Text style={styles.detailLabel}>Customer Notes:</Text>
+                    <Text style={styles.detailValue}>{selectedOrder.notes}</Text>
+                  </View>
+                )}
 
                 {/* Order Items */}
                 <Text style={styles.itemsTitle}>Order Items:</Text>
@@ -1195,13 +1108,7 @@ function OrdersScreenContent() {
         </Text>
       </View>
 
-      <DatePicker
-        visible={showDatePicker}
-        selectedDate={selectedDate}
-        onDateChange={setSelectedDate}
-        onClose={() => setShowDatePicker(false)}
-      />
-
+    
       {loading && orders.length === 0 ? (
         <View style={styles.loadingContainer}>
           <ActivityIndicator size="large" color="#C41E26" />
@@ -1250,6 +1157,7 @@ function OrdersScreenContent() {
       )}
 
       {renderOrderDetailsModal()}
+      {renderFullScreenMapModal()}
       {renderDeliveryAssignmentModal()}
       {renderOrderConfirmDialog()}
 
@@ -1505,6 +1413,18 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#666',
     marginTop: 4,
+  },
+  customerMeta: {
+    fontSize: 14,
+    color: '#444',
+    marginTop: 6,
+    fontWeight: '600',
+  },
+  customerNotes: {
+    fontSize: 13,
+    color: '#666',
+    marginTop: 6,
+    lineHeight: 18,
   },
   orderActions: {
     marginTop: 12,
@@ -1770,6 +1690,28 @@ const styles = StyleSheet.create({
   closeButtonText: {
     color: '#fff',
     fontSize: 16,
+    fontWeight: '600',
+  },
+  mapHeaderRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  mapSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+  },
+  fullViewButton: {
+    backgroundColor: '#C41E26',
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  fullViewButtonText: {
+    color: '#fff',
+    fontSize: 12,
     fontWeight: '600',
   },
   mapContainer: {

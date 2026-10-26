@@ -52,6 +52,8 @@ interface MenuItem {
   image: string | null; // Alias for FoodItem compatibility - required
   restaurant_id: string;
   menu_category_id: string | null;
+  category_id?: string | null;
+  category?: string | null;
   is_available: boolean;
   preparation_time: number | null;
   created_at: string;
@@ -77,7 +79,8 @@ function CategoryMenuItemsContent() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [showForm, setShowForm] = useState(false);
   const router = useRouter();
-  const { id: categoryId } = useLocalSearchParams<{ id: string }>();
+  const { id: routeCategoryId } = useLocalSearchParams<{ id?: string | string[] }>();
+  const categoryId = Array.isArray(routeCategoryId) ? routeCategoryId[0] : routeCategoryId;
 
   // Load menu items and category from API
   useEffect(() => {
@@ -91,18 +94,25 @@ function CategoryMenuItemsContent() {
 
       // Get the category by ID
       const allCategories = await adminApiService.categories.getAll();
-      const categoryData = allCategories.find((cat: any) => cat.id === categoryId);
+      const categoryData = (allCategories as Category[]).find((cat) => String(cat.id) === String(categoryId));
 
       if (!categoryData) {
         throw new Error('Category not found');
       }
 
       // Get menu items for this category
-      const allMenuItems = await adminApiService.menuItems.getAll();
-      const menuItemsData = allMenuItems.filter((item: any) => item.menu_category_id === categoryId);
+      const allMenuItems = await adminApiService.menuItems.getAll() as MenuItem[];
+      const menuItemsData = allMenuItems.filter((item) => {
+        const itemCategories = [item.menu_category_id, item.category_id, item.category];
+        return itemCategories.some((itemCategory) =>
+          itemCategory != null &&
+          (String(itemCategory) === String(categoryData.id) ||
+            String(itemCategory) === String(categoryData.name))
+        );
+      });
 
       // Get restaurant data using the category's restaurant_id
-      const restaurantData = await adminApiService.restaurants.getById((categoryData as any).restaurant_id || (categoryData as any).restaurantId || '');
+      const restaurantData = await adminApiService.restaurants.getById(categoryData.restaurant_id || categoryData.restaurantId || '');
 
 
       // Map menu items to include both image_url and image for compatibility
@@ -111,7 +121,7 @@ function CategoryMenuItemsContent() {
         image: item.image_url ?? null
       }));
 
-      setCategory(categoryData as Category);
+      setCategory(categoryData);
       setMenuItems(mappedMenuItems);
       setRestaurant(restaurantData);
     } catch (error) {

@@ -10,7 +10,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, LogBox, Image, ActivityIndicator } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
-import * as Notifications from 'expo-notifications';
+import { OneSignal } from 'react-native-onesignal'; // 📌 Replaced expo-notifications with OneSignal namespace
 import { initializeOneSignal } from '@/utils/onesignal';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
@@ -56,9 +56,13 @@ export default function RootLayout() {
           console.error('[AdminAppLayout] Error loading session:', error);
         }
 
-        // 4. Clear badge
-        await Notifications.setBadgeCountAsync(0);
-        console.log('[AdminAppLayout] ✅ Badge cleared');
+        // 4. Clear badge via OneSignal to stop native channel conflicts on Android 14+
+        try {
+              OneSignal.Notifications.clearAll();
+          console.log('[AdminAppLayout] ✅ Badge cleared via OneSignal');
+        } catch (badgeError) {
+          console.error('[AdminAppLayout] ⚠️ OneSignal badge clearing failed:', badgeError);
+        }
 
         console.log('[AdminAppLayout] ✅ App initialization complete');
         setAppIsReady(true);
