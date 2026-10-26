@@ -369,6 +369,26 @@ export const adminApiService = {
       );
     },
 
+    getByCategoryId: async (categoryId: string, from: number, to: number) => {
+      if (!(await validateCustomAuth())) {
+        throw new Error('Unauthorized: Invalid or expired session');
+      }
+
+      const { data, count, error } = await supabase
+        .from('menu_items')
+        .select('*', { count: 'exact' })
+        .eq('menu_category_id', categoryId)
+        .order('created_at', { ascending: false })
+        .order('id', { ascending: true })
+        .range(from, to);
+
+      if (error) {
+        throw new Error(`Database error: ${error.message}`);
+      }
+
+      return { items: data || [], count: count || 0 };
+    },
+
     getByRestaurantId: async (restaurantId: string) => {
       return await customAuthWrapper.selectWithAuth(
         supabase

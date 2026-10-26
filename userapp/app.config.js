@@ -10,7 +10,7 @@ module.exports = function(config) {
   return Object.assign({}, config, {
     name: 'AYAR Food Delivery',
     slug: 'ayar-food-delivery',
-    version: '1.0.4',
+    version: '1.0.5',
     orientation: 'portrait',
     icon: './assets/images/splash-screen.jpg',
     scheme: 'ayarfood',
@@ -147,7 +147,7 @@ module.exports = function(config) {
       onesignalAppId: process.env.ONESIGNAL_APP_ID || process.env.EXPO_PUBLIC_ONESIGNAL_APP_ID || '38e20d47-839b-4944-8455-daf65977aaf9',
     },
     owner: 'slliman',
-    runtimeVersion: '1.1.3',
+    runtimeVersion: '1.1.4',
     updates: {
       url: 'https://u.expo.dev/8c7d7420-9fbc-4cf3-a4b9-a23023b81d37',
       fallbackToCacheTimeout: 30000,

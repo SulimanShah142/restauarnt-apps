@@ -134,101 +134,103 @@ export default function UnifiedMap({
 
   // Memoize map HTML - only update when center or markers actually change
   const mapHtml = useMemo(() => {
-    const markers: any[] = [];
-    
-    // Add markers for all restaurants from allOrders
-    if (allOrders && allOrders.length > 0) {
-      allOrders.forEach((order: any) => {
-        if (order.restaurant_latitude && order.restaurant_longitude) {
-          markers.push({
-            lat: Number(order.restaurant_latitude),
-            lng: Number(order.restaurant_longitude),
-            title: order.restaurant_name || 'Restaurant',
-            color: 'red',
-            icon: '🍽️',
-            type: 'restaurant'
-          });
-        }
-        // Add user/customer markers
-        if (order.delivery_latitude && order.delivery_longitude) {
-          markers.push({
-            lat: Number(order.delivery_latitude),
-            lng: Number(order.delivery_longitude),
-            title: order.user_name || 'Customer',
-            color: 'green',
-            icon: '👤',
-            type: 'user'
-          });
-        }
-      });
-    }
+   const markers: any[] = [];
+const markerKeys = new Set<string>();
 
-    // Add markers for all delivery persons
-    if (allDeliveryPersons && allDeliveryPersons.length > 0) {
-      allDeliveryPersons.forEach((person: any) => {
-        if (person.location?.latitude && person.location?.longitude) {
-          markers.push({
-            lat: Number(person.location.latitude),
-            lng: Number(person.location.longitude),
-            title: person.name || 'Delivery Person',
-            color: 'orange',
-            icon: '🚴',
-            type: 'driver'
-          });
-        } else if (person.current_latitude && person.current_longitude) {
-          markers.push({
-            lat: Number(person.current_latitude),
-            lng: Number(person.current_longitude),
-            title: person.name || 'Delivery Person',
-            color: 'orange',
-            icon: '🚴',
-            type: 'driver'
-          });
-        }
-      });
-    }
+const addMarker = (m: { lat: number; lng: number; title?: string; color?: string; icon?: string; type?: string }) => {
+  // Use lat/lng truncated to 6 decimals and the type to form a dedupe key
+  const key = `${m.lat.toFixed(6)}|${m.lng.toFixed(6)}|${m.type || ''}`;
+  if (!markerKeys.has(key)) {
+    markerKeys.add(key);
+    markers.push(m);
+  }
+};
 
-    // Add specific markers if provided (for individual order view)
-    if (normalizedRestaurantCoords) {
-      markers.push({
-        lat: normalizedRestaurantCoords[0],
-        lng: normalizedRestaurantCoords[1],
-        title: restaurantName || 'Restaurant',
+// Add markers for all restaurants from allOrders
+if (allOrders && allOrders.length > 0) {
+  allOrders.forEach((order: any) => {
+    if (order.restaurant_latitude && order.restaurant_longitude) {
+      addMarker({
+        lat: Number(order.restaurant_latitude),
+        lng: Number(order.restaurant_longitude),
+        title: order.restaurant_name || 'Restaurant',
         color: 'red',
         icon: '🍽️',
         type: 'restaurant'
       });
     }
-
-    if (normalizedUserCoords) {
-      markers.push({
-        lat: normalizedUserCoords[0],
-        lng: normalizedUserCoords[1],
-        title: agentName || userName || 'Customer',
-        color: agentName ? 'orange' : 'green',
-        icon: agentName ? '🚴' : '👤',
-        type: agentName ? 'driver' : 'user'
+    // Add user/customer markers
+    if (order.delivery_latitude && order.delivery_longitude) {
+      addMarker({
+        lat: Number(order.delivery_latitude),
+        lng: Number(order.delivery_longitude),
+        title: order.user_name || 'Customer',
+        color: 'green',
+        icon: '👤',
+        type: 'user'
       });
     }
+  });
+}
 
-    // Only show destination marker if it's different from user location
-    if (normalizedDestinationCoords && role !== 'USER') {
-      markers.push({
-        lat: normalizedDestinationCoords[0],
-        lng: normalizedDestinationCoords[1],
-        title: 'Delivery Location',
-        color: 'blue',
-        icon: '📍',
-        type: 'destination'
+// Add markers for all delivery persons
+if (allDeliveryPersons && allDeliveryPersons.length > 0) {
+  allDeliveryPersons.forEach((person: any) => {
+    if (person.location?.latitude && person.location?.longitude) {
+      addMarker({
+        lat: Number(person.location.latitude),
+        lng: Number(person.location.longitude),
+        title: person.name || 'Delivery Person',
+        color: 'orange',
+        icon: '🚴',
+        type: 'driver'
+      });
+    } else if (person.current_latitude && person.current_longitude) {
+      addMarker({
+        lat: Number(person.current_latitude),
+        lng: Number(person.current_longitude),
+        title: person.name || 'Delivery Person',
+        color: 'orange',
+        icon: '🚴',
+        type: 'driver'
       });
     }
+  });
+}
 
-    // Check if we should draw route (restaurant to destination)
-    const showRoute = normalizedRestaurantCoords && normalizedDestinationCoords;
-    const routeStart = showRoute ? normalizedRestaurantCoords : null;
-    const routeEnd = showRoute ? normalizedDestinationCoords : null;
+// Add specific markers if provided (for individual order view)
+if (normalizedRestaurantCoords) {
+  addMarker({
+    lat: normalizedRestaurantCoords[0],
+    lng: normalizedRestaurantCoords[1],
+    title: restaurantName || 'Restaurant',
+    color: 'red',
+    icon: '🍽️',
+    type: 'restaurant'
+  });
+}
 
+if (normalizedUserCoords) {
+  addMarker({
+    lat: normalizedUserCoords[0],
+    lng: normalizedUserCoords[1],
+    title: agentName || userName || 'Customer',
+    color: agentName ? 'orange' : 'green',
+    icon: agentName ? '🚴' : '👤',
+    type: agentName ? 'driver' : 'user'
+  });
+}
     const markersJson = JSON.stringify(markers);
+
+    // determine if we should show a route and prepare safe JS literals for injection
+const showRoute = Boolean(normalizedRestaurantCoords && normalizedDestinationCoords);
+const routeStartCoords = showRoute ? normalizedRestaurantCoords : null;
+const routeEndCoords   = showRoute ? normalizedDestinationCoords : null;
+
+// JSON.stringify produces a valid JS array literal like "[34.5,69.1]"
+// or use the string 'null' when not present
+const routeStartForHtml = routeStartCoords ? JSON.stringify(routeStartCoords) : 'null';
+const routeEndForHtml   = routeEndCoords   ? JSON.stringify(routeEndCoords)   : 'null';
 
 
     return `
@@ -350,9 +352,7 @@ export default function UnifiedMap({
             // Add MapTiler Streets v2 tile layer (Google Maps-like style - detailed, light, minimal)
             // Using correct URL format with API key
             var mapTilerKey = '${MAPTILER_KEY}';
-            var tileUrl = mapTilerKey && mapTilerKey.length > 10 
-              ? 'https://api.maptiler.com/maps/streets-v2/{z}/{x}/{y}.png?key=' + mapTilerKey
-              : 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+            var tileUrl ='https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}'
               
             L.tileLayer(tileUrl, {
               maxZoom: 19,
@@ -442,8 +442,10 @@ export default function UnifiedMap({
             }
 
             // Draw route BEFORE markers (so markers appear on top of route)
-            var routeStart = ${routeStart ? `[${routeStart[0]}, ${routeStart[1]}]` : 'null'};
-            var routeEnd = ${routeEnd ? `[${routeEnd[0]}, ${routeEnd[1]}]` : 'null'};
+        var routeStart = ${routeStartForHtml}; 
+        var routeEnd = ${routeEndForHtml};
+
+
 
             if (routeStart && routeEnd) {
 

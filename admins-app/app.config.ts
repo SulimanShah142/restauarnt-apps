@@ -4,7 +4,7 @@ export default ({ config }: any): any => ({
   ...config,
   name: 'AYAR Admin',
   slug: 'ayar-admin',
-  version: '1.0.2',
+  version: '1.0.4',
   orientation: 'portrait',
   icon: './assets/images/splash-screen.jpg',
   scheme: 'ayaradmin',
@@ -109,7 +109,7 @@ export default ({ config }: any): any => ({
     onesignalAppId: process.env.ONESIGNAL_APP_ID || process.env.EXPO_PUBLIC_ONESIGNAL_APP_ID || '2665a069-40cb-4335-8af1-0f4d8b77aeea',
   },
   owner: 'slliman',
-  runtimeVersion: '1.0.3',
+  runtimeVersion: '1.0.4',
   updates: {
     url: "https://expo.dev/b0480803-b4df-4f9e-b926-eb8af0179df4"
   }

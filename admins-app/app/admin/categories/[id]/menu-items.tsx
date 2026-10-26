@@ -67,7 +67,10 @@ import { imageStorageService } from '@/lib/image-storage';
 import { deleteRecord } from '@/lib/deleteRecord';
 
 function CategoryMenuItemsContent() {
+  const ITEMS_PER_PAGE = 5;
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
+  const [totalMenuItems, setTotalMenuItems] = useState(0);
+  const [loadingMoreItems, setLoadingMoreItems] = useState(false);
   const [category, setCategory] = useState<Category | null>(null);
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [name, setName] = useState('');
@@ -100,33 +103,53 @@ function CategoryMenuItemsContent() {
         throw new Error('Category not found');
       }
 
-      // Get menu items for this category
-      const allMenuItems = await adminApiService.menuItems.getAll() as MenuItem[];
-      const menuItemsData = allMenuItems.filter((item) => {
-        const itemCategories = [item.menu_category_id, item.category_id, item.category];
-        return itemCategories.some((itemCategory) =>
-          itemCategory != null &&
-          (String(itemCategory) === String(categoryData.id) ||
-            String(itemCategory) === String(categoryData.name))
-        );
-      });
-
       // Get restaurant data using the category's restaurant_id
       const restaurantData = await adminApiService.restaurants.getById(categoryData.restaurant_id || categoryData.restaurantId || '');
 
-
-      // Map menu items to include both image_url and image for compatibility
-      const mappedMenuItems: MenuItem[] = menuItemsData.map((item: any) => ({
+      setCategory(categoryData);
+      setRestaurant(restaurantData);
+      const page = await adminApiService.menuItems.getByCategoryId(
+        categoryData.id,
+        0,
+        ITEMS_PER_PAGE - 1
+      );
+      setMenuItems(page.items.map((item: MenuItem) => ({
         ...item,
         image: item.image_url ?? null
-      }));
-
-      setCategory(categoryData);
-      setMenuItems(mappedMenuItems);
-      setRestaurant(restaurantData);
+      })));
+      setTotalMenuItems(page.count);
     } catch (error) {
       console.error('[CategoryMenuItems] Error loading menu items and category:', error);
       Alert.alert('Error', 'Failed to load menu items and category');
+    }
+  };
+
+  const loadMoreMenuItems = async () => {
+    if (!category || loadingMoreItems || menuItems.length >= totalMenuItems) {
+      return;
+    }
+
+    setLoadingMoreItems(true);
+    try {
+      const from = menuItems.length;
+      const page = await adminApiService.menuItems.getByCategoryId(
+        category.id,
+        from,
+        from + ITEMS_PER_PAGE - 1
+      );
+      setMenuItems((currentItems) => [
+        ...currentItems,
+        ...page.items.map((item: MenuItem) => ({
+          ...item,
+          image: item.image_url ?? null
+        }))
+      ]);
+      setTotalMenuItems(page.count);
+    } catch (error) {
+      console.error('[CategoryMenuItems] Error loading more menu items:', error);
+      Alert.alert('Error', 'Failed to load more menu items');
+    } finally {
+      setLoadingMoreItems(false);
     }
   };
 
@@ -455,6 +478,21 @@ function CategoryMenuItemsContent() {
         style={styles.list}
         contentContainerStyle={styles.listContent}
         extraData={menuItems}
+        ListFooterComponent={menuItems.length < totalMenuItems ? (
+          <TouchableOpacity
+            style={styles.loadMoreButton}
+            onPress={loadMoreMenuItems}
+            disabled={loadingMoreItems}
+          >
+            {loadingMoreItems ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.loadMoreButtonText}>
+                Load 5 more ({totalMenuItems - menuItems.length} remaining)
+              </Text>
+            )}
+          </TouchableOpacity>
+        ) : null}
       />
     </SafeAreaView>
   );
@@ -506,6 +544,17 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 100,
+  },
+  loadMoreButton: {
+    backgroundColor: '#C41E26',
+    padding: 14,
+    borderRadius: 8,
+    alignItems: 'center',
+    marginVertical: 12,
+  },
+  loadMoreButtonText: {
+    color: '#fff',
+    fontWeight: 'bold',
   },
   itemContainer: {
     backgroundColor: '#fff',

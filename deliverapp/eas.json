@@ -8,45 +8,42 @@
       "developmentClient": true,
       "distribution": "internal",
       "android": {
+        "resourceClass": "default",
         "buildType": "apk",
-        "gradleCommand": ":app:assembleDebug",
-        "resourceClass": "default"
+        "gradleCommand": ":app:assembleDebug"
       },
-    "ios": {
-           "distribution": "store",
-      "environment": "production" 
-      },
+      "channel": "production"
+    },
     "preview": {
       "distribution": "internal",
       "android": {
+        "resourceClass": "default",
         "buildType": "apk",
         "gradleCommand": ":app:assembleRelease",
-        "resourceClass": "default"
+        "image": "latest"
       },
       "ios": {
-        "distribution": "internal",
-        "resourceClass": "medium",
-        "autoIncrement": true
-      },
-      "channel": "preview"
+        "distribution": "internal"
+      }
     },
     "production": {
       "autoIncrement": true,
+      "distribution": "internal",
       "android": {
-        "buildType": "apk",
-        "gradleCommand": ":app:assembleRelease",
-        "resourceClass": "default"
+        "resourceClass": "default",
+        "buildType": "apk"
       },
       "ios": {
-        "distribution": "internal",
-        "resourceClass": "medium",
-        "autoIncrement": true
+        "distribution": "store"
       },
       "channel": "production"
     }
   },
   "submit": {
-    "production": {}
+    "production": {
+      "ios": {
+        
+      }
+    }
   }
-}
 }

@@ -3,15 +3,15 @@ import 'dotenv/config';
 import fs from 'fs';
 import path from 'path';
 
-// Check if google-services.json exists
-const googleServicesPath = path.resolve(__dirname, 'google-services.json');
+// 🔄 FIX: Normalized path resolve root to prevent ES Module compilation crashes
+const googleServicesPath = path.resolve('google-services.json');
 const hasGoogleServices = fs.existsSync(googleServicesPath);
 
 export default ({ config }: ConfigContext): ExpoConfig => ({
   ...config,
   name: 'AYAR Delivery',
   slug: 'ayar-delivery',
-  version: '1.0.0',
+  version: '1.0.2',
   orientation: 'portrait',
   icon: './assets/images/splash-screen.jpg',
   scheme: 'ayardelivery',
@@ -62,7 +62,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     appleTeamId: '3A4VP86PL8', // Linked your verified Apple Team ID
     icon: './assets/images/splash-screen.jpg',
     infoPlist: {
-          "ITSAppUsesNonExemptEncryption": false,
+      "ITSAppUsesNonExemptEncryption": false,
       NSCameraUsageDescription: 'We need access to your camera to take photos.',
       NSPhotoLibraryUsageDescription:
         'We need access to your photo library to select images.',
@@ -87,6 +87,7 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     'expo-location',
     'expo-sqlite',
     'expo-system-ui',
+    // 🛑 REMOVED 'expo-notifications' TO REMOVE CONFLICTING ANDROID NATIVE CODE LISTENERS
     // Only include Firebase plugin if google-services.json exists
     ...(hasGoogleServices ? ['./plugins/withFirebase'] : []),
     // OneSignal Plugin configured specifically for production App Store builds
@@ -121,8 +122,8 @@ export default ({ config }: ConfigContext): ExpoConfig => ({
     mapTilerKey: process.env.EXPO_PUBLIC_MAPTILER_KEY || '5MOQerQLiYgmkWeWHRd7',
     locationIqKey: process.env.EXPO_PUBLIC_LOCATION_IQ_TOKEN || 'pk.ac03476010699238dcadcb4f0eb9a998',
     // OneSignal App ID - CRITICAL for push notifications
-    onesignalAppId: process.env.ONESIGNAL_APP_ID || process.env.EXPO_PUBLIC_ONESIGNAL_APP_ID || '',
+    onesignalAppId: process.env.ONESIGNAL_APP_ID || process.env.EXPO_PUBLIC_ONESIGNAL_APP_ID || 'da1609d1-cebc-47a1-9b0c-4d797997344c',
   },
   owner: 'suliman-jan',
-  runtimeVersion: '1.0.0',
+  runtimeVersion: '1.1.2',
 });

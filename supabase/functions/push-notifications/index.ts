@@ -71,9 +71,9 @@ async function sendPushNotification(onesignalPlayerId: string, appType: string, 
         ...data,
         timestamp: new Date().toISOString(),
       },
-      android_channel_id: 'order-updates',
-      ios_sound: 'default',
-      android_sound: 'default',
+      android_channel_id: 'notification_sound',
+      ios_sound: 'notification_sound.wav',
+      android_sound: 'notification_sound',
       priority: 'High',
     }
 

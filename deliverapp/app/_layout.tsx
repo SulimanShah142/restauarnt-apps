@@ -1,4 +1,3 @@
-// deliverapp/app/_layout.tsx
 // OneSignal-only notification flow (foreground, background, closed app)
 
 import { router, Stack } from 'expo-router';
@@ -9,7 +8,7 @@ import { GestureHandlerRootView } from 'react-native-gesture-handler';
 import React, { useState, useEffect } from 'react';
 import { View, StyleSheet, Platform, Image, LogBox } from 'react-native';
 import * as SplashScreen from 'expo-splash-screen';
-import * as Notifications from 'expo-notifications';
+// 🛑 REMOVED: import * as Notifications from 'expo-notifications';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 import { initializeNotificationService } from '@/lib/notification-service';
 import NotificationPermissionPrompt from '@/components/NotificationPermissionPrompt';
@@ -47,8 +46,8 @@ function RegisterPushToken() {
 // =====================================================
 function OneSignalNotificationHandler() {
   useEffect(() => {
-    // OneSignal v5 Click Listener API
-    OneSignal.Notifications.addEventListener('click', (event) => {
+    // 🔄 FIX: Defined explicitly as a named variable so it can be unmounted safely
+    const handleNotificationClick = (event: any) => {
       console.log('[OneSignal] Notification clicked:', event.notification);
       const data: any = event.notification.additionalData;
 
@@ -58,11 +57,14 @@ function OneSignalNotificationHandler() {
       } else if (data?.type === 'new_assignment') {
         router.push('../(tabs)/deliveries');
       }
-    });
+    };
+
+    // OneSignal v5 Click Listener API
+    OneSignal.Notifications.addEventListener('click', handleNotificationClick);
 
     return () => {
-      // Clean up listener on unmount
-      OneSignal.Notifications.removeEventListener('click', () => {});
+      // 🔄 FIX: Pass the exact identical function reference to prevent memory leaks
+      OneSignal.Notifications.removeEventListener('click', handleNotificationClick);
     };
   }, []);
 
@@ -94,8 +96,13 @@ export default function RootLayout() {
         // 4. Notification permissions will be requested during login (in syncOneSignalTokens)
         console.log('[DeliveryAppLayout] ℹ️ Notification permissions will be requested during login');
 
-        // Clear badge
-        await Notifications.setBadgeCountAsync(0);
+        // 🔄 FIX: Replaced Expo badge logic with native OneSignal system call
+        try {
+          OneSignal.Notifications.clearAll();
+          console.log('[DeliveryAppLayout] ✅ Notifications drawer cleared via OneSignal');
+        } catch (badgeError) {
+          console.error('[DeliveryAppLayout] ⚠️ OneSignal notice clearing failed:', badgeError);
+        }
 
         setAppIsReady(true);
       } catch (e) {
@@ -145,9 +152,8 @@ export default function RootLayout() {
           {/* Push token registration for OneSignal notifications */}
           <RegisterPushToken />
 
-          {/* Notification response handler (tap handling) */}
-       
-       
+          {/* 🔄 FIX: Restored missing tap event mounting node inside the provider landscape wrapper */}
+          <OneSignalNotificationHandler />
 
           <Stack screenOptions={{ headerShown: false }}>
             <Stack.Screen name="index" options={{ headerShown: false }} />

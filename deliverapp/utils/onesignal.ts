@@ -152,7 +152,7 @@ export async function syncOneSignalTokens() {
     OneSignal.login(deliveryPersonId);
     console.log('[OneSignal] ✅ User identified');
 
-    console.log('[OneSignal] 🔔 Requesting permission...');
+        console.log('[OneSignal] 🔔 Requesting permission...');
     const granted = await OneSignal.Notifications.requestPermission(true);
     console.log('[OneSignal] Permission granted:', granted);
 
@@ -161,10 +161,15 @@ export async function syncOneSignalTokens() {
       return;
     }
 
+    // 🛑 ADD THIS CRITICAL FIX: Give Android 14+ a split second to save the 
+    // system channel permission state before pushing the OneSignal opt-in thread!
+    await new Promise(resolve => setTimeout(resolve, 300));
+
     console.log('[OneSignal] 🚀 Opting in...');
     OneSignal.User.pushSubscription.optIn();
     console.log('[OneSignal] ✅ Opted in - tokens will process asynchronously via listener event');
 
+   
     // Run the short 2-second check loop matching your admin layout
     await new Promise(resolve => setTimeout(resolve, 2000));
     

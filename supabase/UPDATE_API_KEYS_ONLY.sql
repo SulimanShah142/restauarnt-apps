@@ -39,7 +39,7 @@ DECLARE
 BEGIN
   IF p_app_type = 'admin' THEN
     l_onesignal_app_id := '2665a069-40cb-4335-8af1-0f4d8b77aeea';
-    l_onesignal_api_key := 'os_v2_app_ezs2a2kaznbtlcxrb5gyw55o5lvxw3weicce4pebmq5jtmyu7fpi56ficmcr7fr23xs7dsz2srzxffx4kmqc7jbw73n6j4hi2xt4nra';
+    l_onesignal_api_key := 'REPLACE_WITH_ONESIGNAL_REST_API_KEY';
 
     SELECT ARRAY_AGG(DISTINCT player_id)
     INTO l_player_ids
@@ -51,7 +51,7 @@ BEGIN
 
   ELSIF p_app_type = 'user' THEN
     l_onesignal_app_id := '38e20d47-839b-4944-8455-daf65977aaf9';
-    l_onesignal_api_key := 'os_v2_app_hdra2r4dtneujbcv3l3fs55k7eourhifo63ufb4en4lfmptextciwwwbedrevmiayzmmufgamouelfuwcuspsav246una3n4wryzl5a';
+    l_onesignal_api_key := 'REPLACE_WITH_ONESIGNAL_REST_API_KEY';
 
     l_user_id := p_user_type::uuid;
 
@@ -80,7 +80,7 @@ BEGIN
 
   ELSIF p_app_type = 'delivery' THEN
     l_onesignal_app_id := 'da1609d1-cebc-47a1-9b0c-4d797997344c';
-    l_onesignal_api_key := 'os_v2_app_3ilatuooxrd2dgymjv4xtfzujr2x2y7v6kfetdffai74pilmpclmsm3leyvnjecoqt3favq4cdztwajy7xa7wlgvnrec42szuelas5i';
+    l_onesignal_api_key := 'REPLACE_WITH_ONESIGNAL_REST_API_KEY';
 
     -- Try specific delivery person first
     BEGIN

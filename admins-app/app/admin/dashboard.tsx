@@ -120,11 +120,19 @@ function AdminDashboardContent() {
 
 
       // Fetch data directly from Supabase
-      const [{ data: restaurants }, { data: menuItems }, { data: deliveryPersonsData }] = await Promise.all([
+      const [
+        { data: restaurants },
+        { count: menuItemCount, error: menuItemsError },
+        { data: deliveryPersonsData }
+      ] = await Promise.all([
         supabase.from('restaurants').select('id'),
-        supabase.from('menu_items').select('id'),
+        supabase.from('menu_items').select('id', { count: 'exact', head: true }),
         supabase.from('delivery_persons').select('id, is_available')
       ]);
+
+      if (menuItemsError) {
+        throw new Error(`Failed to count menu items: ${menuItemsError.message}`);
+      }
 
       // Fetch ONLY today's orders (using local date range)
       const { data: orders, error: ordersError } = await supabase
@@ -148,7 +156,7 @@ function AdminDashboardContent() {
 
       const stats: SummaryStats = {
         totalRestaurants: restaurants?.length || 0,
-        totalMenuItems: menuItems?.length || 0,
+        totalMenuItems: menuItemCount || 0,
         totalOrders: orders?.length || 0, // Today's orders only
         activeDeliveries: activeDeliveries,
         availableDeliveryPersons: availableDeliveryPersons,
