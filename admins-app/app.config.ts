@@ -110,7 +110,7 @@ export default ({ config }: any): any => ({
   },
   owner: 'slliman',
   runtimeVersion: '1.0.4',
-  updates: {
-    url: "https://expo.dev/b0480803-b4df-4f9e-b926-eb8af0179df4"
+ "updates": {
+    "url": "https://u.expo.dev/b0480803-b4df-4f9e-b926-eb8af0179df4"
   }
 });

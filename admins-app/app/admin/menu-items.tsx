@@ -55,7 +55,8 @@ function ManageMenuItemsContent() {
   const [loading, setLoading] = useState(true);
   const [actionLoading, setActionLoading] = useState<{[key: string]: boolean}>({}); // Track loading state per action
   const [categoryLoading, setCategoryLoading] = useState(false); // Track category loading
-  const { categoryId } = useLocalSearchParams<{ categoryId?: string }>();
+  const { categoryId: routeCategoryId } = useLocalSearchParams<{ categoryId?: string | string[] }>();
+  const categoryId = Array.isArray(routeCategoryId) ? routeCategoryId[0] : routeCategoryId;
   const router = useRouter(); // Add router for navigation
   
   // State for custom selection modals
@@ -69,20 +70,23 @@ function ManageMenuItemsContent() {
 
   const loadMenuItemsAndRestaurants = async () => {
     try {
+      setLoading(true);
 
       // Check network status first
       const isOnline = await checkNetworkStatus();
       if (!isOnline) {
         const userIgnored = await showNetworkErrorAlert();
         if (!userIgnored) {
+          setLoading(false);
           return; // User didn't ignore, exit
         }
       }
 
       // Load from Supabase API directly
-      const [menuItemsData, restaurantsData] = await Promise.all([
-        adminApiService.menuItems.getAll(),
-        adminApiService.restaurants.getAll()
+      const [menuItemsData, restaurantsData, selectedCategory] = await Promise.all([
+        adminApiService.menuItems.getAll(categoryId),
+        adminApiService.restaurants.getAll(),
+        categoryId ? adminApiService.categories.getById(categoryId) : Promise.resolve(null)
       ]);
 
 
@@ -95,6 +99,16 @@ function ManageMenuItemsContent() {
 
       setMenuItems(menuItemsData as FoodItem[]);
       setRestaurants(validRestaurants as Restaurant[]);
+      if (selectedCategory) {
+        setCategory(selectedCategory.id);
+        setRestaurantId(selectedCategory.restaurant_id);
+        const categoryList = await adminApiService.categories.getByRestaurantId(selectedCategory.restaurant_id);
+        setCategories(categoryList);
+      } else {
+        setCategory(null);
+        setRestaurantId('');
+        setCategories([]);
+      }
       setLoading(false);
     } catch (error) {
       console.error('[MenuItems] ❌ Error loading menu items and restaurants:', error);
@@ -505,6 +519,7 @@ function ManageMenuItemsContent() {
               }
               
               setRestaurantId(item.id);
+              setCategory(null);
               loadCategoriesForRestaurant(item.id);
               setShowRestaurantModal(false);
             }}
@@ -608,7 +623,9 @@ function ManageMenuItemsContent() {
           />
         )}
             </View>
-            <Text style={styles.sectionTitle}>Existing Menu Items</Text>
+            <Text style={styles.sectionTitle}>
+              {categoryId ? 'Menu Items in Selected Category' : 'Existing Menu Items'}
+            </Text>
           </View>
           </View>
         }

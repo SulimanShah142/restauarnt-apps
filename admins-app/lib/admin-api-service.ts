@@ -168,6 +168,8 @@ const syncWithLocalDb = async (tableName: string, data: any[]) => {
 };
 
 // API Service for Admin Communication with custom auth validation
+const MENU_ITEMS_PAGE_SIZE = 500;
+
 export const adminApiService = {
   // Restaurants API
   restaurants: {
@@ -359,14 +361,58 @@ export const adminApiService = {
 
   // Menu Items API
   menuItems: {
-    getAll: async () => {
-      return await customAuthWrapper.selectWithAuth(
-        supabase
+    getAll: async (categoryId?: string) => {
+      if (!(await validateCustomAuth())) {
+        throw new Error('Unauthorized: Invalid or expired session');
+      }
+
+      const items: any[] = [];
+      for (let from = 0; ; from += MENU_ITEMS_PAGE_SIZE) {
+        let query = supabase
           .from('menu_items')
           .select('*')
-          .order('created_at', { ascending: false }),
-        'Unauthorized: Invalid or expired session'
-      );
+          .order('created_at', { ascending: false })
+          .order('id', { ascending: true })
+          .range(from, from + MENU_ITEMS_PAGE_SIZE - 1);
+
+        if (categoryId) {
+          query = query.eq('menu_category_id', categoryId);
+        }
+
+        const { data, error } = await query;
+        if (error) {
+          throw new Error(`Database error: ${error.message}`);
+        }
+
+        items.push(...(data || []));
+        if (!data || data.length < MENU_ITEMS_PAGE_SIZE) {
+          return items;
+        }
+      }
+    },
+
+    getCount: async () => {
+      if (!(await validateCustomAuth())) {
+        throw new Error('Unauthorized: Invalid or expired session');
+      }
+
+      let total = 0;
+      for (let from = 0; ; from += MENU_ITEMS_PAGE_SIZE) {
+        const { data, error } = await supabase
+          .from('menu_items')
+          .select('id')
+          .order('id', { ascending: true })
+          .range(from, from + MENU_ITEMS_PAGE_SIZE - 1);
+
+        if (error) {
+          throw new Error(`Database error while counting menu items: ${error.message}`);
+        }
+
+        total += data?.length || 0;
+        if (!data || data.length < MENU_ITEMS_PAGE_SIZE) {
+          return total;
+        }
+      }
     },
 
     getByCategoryId: async (categoryId: string, from: number, to: number) => {
@@ -498,6 +544,24 @@ export const adminApiService = {
 
   // Categories API
   categories: {
+    getById: async (id: string) => {
+      if (!(await validateCustomAuth())) {
+        throw new Error('Unauthorized: Invalid or expired session');
+      }
+
+      const { data, error } = await supabase
+        .from('menu_categories')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error) {
+        throw new Error(`Database error: ${error.message}`);
+      }
+
+      return data;
+    },
+
     getAll: async () => {
       return await customAuthWrapper.selectWithAuth(
         supabase
