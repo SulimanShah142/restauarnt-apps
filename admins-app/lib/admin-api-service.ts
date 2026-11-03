@@ -397,21 +397,30 @@ export const adminApiService = {
       }
 
       let total = 0;
-      for (let from = 0; ; from += MENU_ITEMS_PAGE_SIZE) {
-        const { data, error } = await supabase
+      let lastId: string | null = null;
+      while (true) {
+        const baseQuery = supabase
           .from('menu_items')
           .select('id')
           .order('id', { ascending: true })
-          .range(from, from + MENU_ITEMS_PAGE_SIZE - 1);
+          .limit(MENU_ITEMS_PAGE_SIZE);
+        const query = lastId ? baseQuery.gt('id', lastId) : baseQuery;
+        const { data, error } = await query;
 
         if (error) {
           throw new Error(`Database error while counting menu items: ${error.message}`);
         }
 
-        total += data?.length || 0;
-        if (!data || data.length < MENU_ITEMS_PAGE_SIZE) {
+        if (!data || data.length === 0) {
           return total;
         }
+
+        total += data.length;
+        if (data.length < MENU_ITEMS_PAGE_SIZE) {
+          return total;
+        }
+
+        lastId = data[data.length - 1].id;
       }
     },
 

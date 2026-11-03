@@ -153,7 +153,7 @@ function RestaurantCategoriesContent() {
 
   const viewCategoryItems = (categoryId: string) => {
     // Navigate to menu items filtered by this category
-    router.push(`/admin/menu-items?categoryId=${encodeURIComponent(categoryId)}`);
+    router.push(`/admin/categories/${encodeURIComponent(categoryId)}/menu-items`);
   };
 
   const goBack = () => {

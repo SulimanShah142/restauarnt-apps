@@ -200,7 +200,7 @@ function CategoriesScreenContent() {
 
   const viewCategoryItems = (categoryId: string) => {
     // Navigate to menu items for this specific category
-    router.push(`/admin/menu-items?categoryId=${encodeURIComponent(categoryId)}`);
+    router.push(`/admin/categories/${encodeURIComponent(categoryId)}/menu-items`);
   };
 
   const renderItem = ({ item }: { item: Category }) => {

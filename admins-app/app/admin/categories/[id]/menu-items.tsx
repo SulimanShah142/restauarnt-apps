@@ -71,6 +71,8 @@ function CategoryMenuItemsContent() {
   const [menuItems, setMenuItems] = useState<MenuItem[]>([]);
   const [totalMenuItems, setTotalMenuItems] = useState(0);
   const [loadingMoreItems, setLoadingMoreItems] = useState(false);
+  const [loadingItems, setLoadingItems] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [category, setCategory] = useState<Category | null>(null);
   const [restaurant, setRestaurant] = useState<Restaurant | null>(null);
   const [name, setName] = useState('');
@@ -89,24 +91,29 @@ function CategoryMenuItemsContent() {
   useEffect(() => {
     if (categoryId) {
       loadMenuItemsAndCategory();
+    } else {
+      setLoadingItems(false);
     }
   }, [categoryId]);
 
   const loadMenuItemsAndCategory = async () => {
+    if (!categoryId) {
+      setLoadingItems(false);
+      setLoadError('No category was selected.');
+      return;
+    }
+
+    setLoadingItems(true);
+    setLoadError(null);
+    setMenuItems([]);
+    setTotalMenuItems(0);
     try {
-
-      // Get the category by ID
-      const allCategories = await adminApiService.categories.getAll();
-      const categoryData = (allCategories as Category[]).find((cat) => String(cat.id) === String(categoryId));
-
-      if (!categoryData) {
-        throw new Error('Category not found');
-      }
+      const categoryData = await adminApiService.categories.getById(categoryId);
+      setCategory(categoryData);
 
       // Get restaurant data using the category's restaurant_id
       const restaurantData = await adminApiService.restaurants.getById(categoryData.restaurant_id || categoryData.restaurantId || '');
 
-      setCategory(categoryData);
       setRestaurant(restaurantData);
       const page = await adminApiService.menuItems.getByCategoryId(
         categoryData.id,
@@ -120,7 +127,9 @@ function CategoryMenuItemsContent() {
       setTotalMenuItems(page.count);
     } catch (error) {
       console.error('[CategoryMenuItems] Error loading menu items and category:', error);
-      Alert.alert('Error', 'Failed to load menu items and category');
+      setLoadError((error as Error).message || 'Unable to load this category.');
+    } finally {
+      setLoadingItems(false);
     }
   };
 
@@ -320,8 +329,9 @@ function CategoryMenuItemsContent() {
 
   const goBack = () => {
     // Navigate back to the restaurant's categories page
-    if (category?.restaurantId) {
-      router.push(`/admin/restaurants/${category.restaurantId}/categories`);
+    const restaurantId = category?.restaurant_id || category?.restaurantId;
+    if (restaurantId) {
+      router.push(`/admin/restaurants/${restaurantId}/categories`);
     } else {
       // Fallback to categories page if restaurant ID not available
       router.navigate('/admin/categories');
@@ -367,10 +377,27 @@ function CategoryMenuItemsContent() {
     </View>
   );
 
-  if (!category || !restaurant) {
+  if (loadingItems) {
     return (
       <SafeAreaView style={styles.container}>
-        <Text>Loading...</Text>
+        <ActivityIndicator size="large" color="#C41E26" />
+        <Text style={styles.loadErrorText}>Loading category menu items...</Text>
+      </SafeAreaView>
+    );
+  }
+
+  if (loadError || !category || !restaurant) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <Text style={styles.loadErrorText}>
+          {loadError || 'The category or its restaurant could not be found.'}
+        </Text>
+        <TouchableOpacity style={styles.loadMoreButton} onPress={loadMenuItemsAndCategory}>
+          <Text style={styles.loadMoreButtonText}>Try Again</Text>
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.backButton} onPress={goBack}>
+          <Text style={styles.backButtonText}>Back</Text>
+        </TouchableOpacity>
       </SafeAreaView>
     );
   }
@@ -478,6 +505,11 @@ function CategoryMenuItemsContent() {
         style={styles.list}
         contentContainerStyle={styles.listContent}
         extraData={menuItems}
+        ListEmptyComponent={
+          <Text style={styles.emptyMessage}>
+            {loadingItems ? 'Loading menu items...' : 'No menu items found in this category.'}
+          </Text>
+        }
         ListFooterComponent={menuItems.length < totalMenuItems ? (
           <TouchableOpacity
             style={styles.loadMoreButton}
@@ -544,6 +576,19 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 100,
+  },
+  emptyMessage: {
+    color: '#666',
+    fontSize: 16,
+    textAlign: 'center',
+    paddingVertical: 24,
+  },
+  loadErrorText: {
+    color: '#666',
+    fontSize: 16,
+    textAlign: 'center',
+    marginVertical: 16,
+    paddingHorizontal: 20,
   },
   loadMoreButton: {
     backgroundColor: '#C41E26',

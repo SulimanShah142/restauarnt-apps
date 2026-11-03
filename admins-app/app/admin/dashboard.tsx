@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Modal, Alert, ActivityIndicator } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { isAdminAuthenticated } from '@/lib/admin-auth';
@@ -97,18 +97,15 @@ function AdminDashboardContent() {
     }
   };
 
-  // Load dashboard data from SUPABASE (online only)
-  useEffect(() => {
-    loadDashboardData();
-  }, []);
-
-  const loadDashboardData = async () => {
+  const loadDashboardData = React.useCallback(async () => {
+    setLoading(true);
     try {
       // Check network status first
       const isOnline = await checkNetworkStatus();
       if (!isOnline) {
         const userIgnored = await showNetworkErrorAlert();
         if (!userIgnored) {
+          setLoading(false);
           return; // User didn't ignore, exit
         }
       }
@@ -166,7 +163,13 @@ function AdminDashboardContent() {
       Alert.alert('Error', 'Failed to load dashboard data');
       setLoading(false);
     }
-  };
+  }, []);
+
+  useFocusEffect(
+    React.useCallback(() => {
+      void loadDashboardData();
+    }, [loadDashboardData])
+  );
 
   const handleSignOut = async () => {
     try {
