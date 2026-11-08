@@ -187,15 +187,16 @@ export const restaurantService = {
       if (online) {
 
         const now = Date.now();
-        // When forceSync is true, ALWAYS fetch regardless of cooldown or sync state
-        const shouldFetch = options?.forceSync 
-          ? true 
-          : ((now - lastSyncTime > SYNC_COOLDOWN_MS) && !isSyncing);
+        // Never start a second refresh while the cache is being written. A forced
+        // refresh skips the cooldown, but still respects the in-flight lock.
+        const shouldFetch = !isSyncing && (
+          options?.forceSync === true || now - lastSyncTime > SYNC_COOLDOWN_MS
+        );
 
 
         if (shouldFetch) {
-          // If already syncing and not forceSync, fall back to cache
-          if (isSyncing && !options?.forceSync) {
+          // If another refresh started meanwhile, fall back to the stable cache.
+          if (isSyncing) {
             console.log('[RestaurantService] 📱 Using local cache (sync in progress)');
             const restaurants = await db.getRestaurants();
             const activeRestaurants = restaurants.filter(r => r.is_active !== false && r.is_available !== false);
@@ -243,11 +244,33 @@ export const restaurantService = {
                 try {
                   const cachedRestaurants = await db.getRestaurants();
                   const cachedImages = new Map(cachedRestaurants.map(restaurant => [restaurant.id, restaurant.image_base64]));
-                  await db.runAsync?.('DELETE FROM restaurants');
                   for (const restaurant of fetchedRestaurants) {
                     await db.runAsync?.(
                       `INSERT INTO restaurants (id, name, description, image_url, image_base64, is_active, is_available, created_at, updated_at, latitude, longitude, owner_id, opening_time, closing_time, cuisine_type, address, phone, email, rating, delivery_time, delivery_fee, minimum_order, estimated_delivery_time)
-                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+                       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                       ON CONFLICT(id) DO UPDATE SET
+                         name = excluded.name,
+                         description = excluded.description,
+                         image_url = excluded.image_url,
+                         image_base64 = excluded.image_base64,
+                         is_active = excluded.is_active,
+                         is_available = excluded.is_available,
+                         created_at = excluded.created_at,
+                         updated_at = excluded.updated_at,
+                         latitude = excluded.latitude,
+                         longitude = excluded.longitude,
+                         owner_id = excluded.owner_id,
+                         opening_time = excluded.opening_time,
+                         closing_time = excluded.closing_time,
+                         cuisine_type = excluded.cuisine_type,
+                         address = excluded.address,
+                         phone = excluded.phone,
+                         email = excluded.email,
+                         rating = excluded.rating,
+                         delivery_time = excluded.delivery_time,
+                         delivery_fee = excluded.delivery_fee,
+                         minimum_order = excluded.minimum_order,
+                         estimated_delivery_time = excluded.estimated_delivery_time`,
                       [
                         restaurant.id, restaurant.name, restaurant.description, restaurant.image_url,
                         cachedImages.get(restaurant.id) || null,
@@ -262,6 +285,12 @@ export const restaurantService = {
                       ]
                     );
                   }
+                  const restaurantIds = fetchedRestaurants.map(restaurant => restaurant.id);
+                  const placeholders = restaurantIds.map(() => '?').join(', ');
+                  await db.runAsync?.(
+                    `DELETE FROM restaurants WHERE id NOT IN (${placeholders})`,
+                    restaurantIds
+                  );
                   await syncMenuDataForRestaurants(fetchedRestaurants.map(r => r.id));
                 } catch (cacheError) {
                   console.error('[RestaurantService] Background cache update failed:', cacheError);

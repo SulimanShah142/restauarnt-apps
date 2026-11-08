@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import { View, Text, FlatList, StyleSheet, TouchableOpacity, Image, TextInput, Dimensions, Alert, ActivityIndicator, Modal, ScrollView } from 'react-native';
+import { AppState, View, Text, FlatList, StyleSheet, TouchableOpacity, Image, TextInput, Dimensions, Alert, ActivityIndicator, Modal, ScrollView } from 'react-native';
 import { useRouter, useFocusEffect } from 'expo-router';
 import { useCart } from '../../contexts/CartContext';
 import { useAuth } from '../../contexts/AuthContext';
@@ -122,17 +122,16 @@ export default function MenuScreen() {
   const dataLoadedRef = useRef(false);
   const hasEverSelectedRestaurantRef = useRef(false);
   const initialLoadDoneRef = useRef(false);
+  const loadInProgressRef = useRef(false);
 
-  const loadMenuData = useCallback(async () => {
-    // Prevent duplicate concurrent calls
-    if (initialLoadDoneRef.current) {
-      console.log('[Menu] loadMenuData already done, skipping duplicate call');
+  const loadMenuData = useCallback(async (forceSync = false) => {
+    if (loadInProgressRef.current || (initialLoadDoneRef.current && !forceSync)) {
       return;
     }
 
-    console.log('[Menu] loadMenuData called - setting loading to true');
-    setLoading(true);
+    loadInProgressRef.current = true;
     initialLoadDoneRef.current = true;
+    setLoading(true);
 
     try {
       const cachedRestaurants = await restaurantService.getCachedRestaurants();
@@ -143,40 +142,27 @@ export default function MenuScreen() {
       }
 
       const loadedRestaurants = await restaurantService.getAllRestaurants({
-        userId: session?.user?.id
+        userId: session?.user?.id,
+        forceSync,
       });
 
       console.log('[Menu] Loaded restaurants:', loadedRestaurants.length);
-      setRestaurants(loadedRestaurants);
+      setRestaurants(current => loadedRestaurants.length > 0 || current.length === 0 ? loadedRestaurants : current);
       dataLoadedRef.current = true;
     } catch (error) {
       console.error('[Menu] Error loading restaurants:', error);
-      setRestaurants([]);
       setErrorVisible(true);
       setErrorMessage(error instanceof Error ? error.message : 'An unknown error occurred while loading restaurants');
     } finally {
+      loadInProgressRef.current = false;
       setLoading(false);
-      console.log('[Menu] loadMenuData complete, loading set to false');
     }
   }, [session?.user?.id]);
 
   // Manual refresh function - forces sync and reloads data
   const handleRefresh = useCallback(async () => {
-    setLoading(true);
-
-    try {
-      const refreshedRestaurants = await restaurantService.getAllRestaurants({
-        userId: session?.user?.id,
-        forceSync: true
-      });
-      setRestaurants(refreshedRestaurants);
-      dataLoadedRef.current = true;
-    } catch (error) {
-      console.error('[Menu] Refresh error:', error);
-    } finally {
-      setLoading(false);
-    }
-  }, [session?.user?.id]);
+    await loadMenuData(true);
+  }, [loadMenuData]);
 
   // Load food items callback - fetches from Supabase when online
   const loadFoodItems = useCallback(async (restaurantId: string) => {
@@ -266,18 +252,30 @@ export default function MenuScreen() {
     }
   }, [selectedRestaurant, loadFoodItems, loadCategories]);
 
-  // Initial load effect - runs only ONCE on mount
   useEffect(() => {
-    console.log('[Menu] Component mounted - initial load');
-    loadMenuData();
-
-    // Show advertisement 5 seconds after entering menu
     const adTimer = setTimeout(() => {
       setShowAdvertisement(true);
     }, 5000);
-
     return () => clearTimeout(adTimer);
-  }, []); // Empty deps - only runs once on mount
+  }, []);
+
+  // Refresh when returning to the menu and when the app resumes from background.
+  useFocusEffect(useCallback(() => {
+    initialLoadDoneRef.current = false;
+    void loadMenuData(true);
+
+    const appStateSubscription = AppState.addEventListener('change', state => {
+      if (state === 'active') {
+        initialLoadDoneRef.current = false;
+        void loadMenuData(true);
+      }
+    });
+
+    return () => {
+      appStateSubscription.remove();
+      initialLoadDoneRef.current = false;
+    };
+  }, [loadMenuData]));
 
   // Show loading for food items when restaurant selected
   const showFoodLoading = selectedRestaurant && isLoadingFoodItems;

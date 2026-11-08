@@ -1,2 +1,5 @@
 [functions.vacuum-orders]
 verify_jwt = false
+
+[functions.phone-password-login]
+verify_jwt = false

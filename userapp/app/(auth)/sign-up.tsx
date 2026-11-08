@@ -13,6 +13,7 @@ const DELETE_ACCOUNT_URL = 'https://sites.google.com/view/ayar-terms-of-service/
 export default function SignUp() {
     const [email, setEmail] = useState("");
     const [name, setName] = useState("");
+    const [phone, setPhone] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
@@ -33,6 +34,11 @@ export default function SignUp() {
         if (!name.trim()) {
             console.log('[SignUp] Validation failed: empty name');
             Alert.alert('Error', 'Please enter your name');
+            return;
+        }
+
+        if (!phone.trim()) {
+            Alert.alert('Error', 'Please enter your phone number');
             return;
         }
 
@@ -62,10 +68,11 @@ export default function SignUp() {
         setIsLoading(true);
         try {
             console.log('[SignUp] Calling supabase.auth.signUp...');
-            // Sign up with Supabase - NO metadata to avoid trigger issues
+            const normalizedPhone = phone.trim().replace(/[\s()-]/g, '');
             const { data, error } = await supabase.auth.signUp({
-                email,
+                email: email.trim(),
                 password,
+                options: { data: { full_name: name.trim(), phone: normalizedPhone } },
             });
 
             if (error) {
@@ -73,11 +80,24 @@ export default function SignUp() {
                 throw error;
             }
 
+            // Save to profiles when Supabase returns an active session. For email-confirmation
+            // signups, the auth trigger can read phone from user metadata after the migration below.
+            if (data.session && data.user) {
+                const { error: profileError } = await supabase.from('profiles').upsert({
+                    id: data.user.id,
+                    full_name: name.trim(),
+                    email: email.trim(),
+                    phone: normalizedPhone,
+                } as any);
+                if (profileError) throw profileError;
+            }
+
             console.log('[SignUp] ✅ Auth signup success, user_id:', data.user?.id);
 
             // Clear form
             setEmail('');
             setName('');
+            setPhone('');
             setPassword('');
 
             // Navigate to sign-in - user will verify email and log in
@@ -129,6 +149,17 @@ export default function SignUp() {
                             keyboardType="email-address"
                             autoCapitalize="none"
                             autoComplete="email"
+                            editable={!isLoading}
+                        />
+
+                        <TextInput
+                            style={styles.input}
+                            placeholder="Phone Number"
+                            placeholderTextColor="#999999"
+                            value={phone}
+                            onChangeText={setPhone}
+                            keyboardType="phone-pad"
+                            autoComplete="tel"
                             editable={!isLoading}
                         />
 
