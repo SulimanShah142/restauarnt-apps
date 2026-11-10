@@ -89,6 +89,7 @@ const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [restaurantNames, setRestaurantNames] = useState<Record<string, string>>({});
   const [restaurantLocations, setRestaurantLocations] = useState<Record<string, { lat: number; lng: number }>>({});
   const [restaurantPrepTimes, setRestaurantPrepTimes] = useState<Record<string, number>>({});
+  const [restaurantDataLoaded, setRestaurantDataLoaded] = useState<Record<string, boolean>>({});
   const cartRestaurantIds = useMemo(() => [...new Set((cart || []).map(item =>
     item?.restaurantId || item?.foodItem?.restaurantId
   ).filter(Boolean))] as string[], [cart]);
@@ -231,11 +232,7 @@ const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
 
       // Check which restaurants we already have data for
       const missingIds = cartRestaurantIds.filter(id => {
-        const hasData = id && restaurantLocations[id] && restaurantNames[id];
-        if (hasData) {
-          return false;
-        }
-        return !hasData;
+        return !restaurantDataLoaded[id];
       });
 
 
@@ -268,18 +265,24 @@ const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
             for (const data of pingData) {
               newNames[data.id] = data.name || `Restaurant ${data.id}`;
 
-              // Checkout map location comes from geocoding the selected restaurant's
-              // database address; stored coordinates are only a fallback.
+              // Geocode the selected restaurant's database address. Do not accept
+              // the shared geocoder's generic city fallback as a restaurant pin.
               try {
-                const geocoded = data.address ? await geocodeAddress(data.address) : null;
+                const geocoded = data.address ? await geocodeAddress(data.address, true, false) : null;
                 if (geocoded) {
                   newLocations[data.id] = { lat: geocoded.latitude, lng: geocoded.longitude };
-                } else if (data.latitude != null && data.longitude != null) {
-                  newLocations[data.id] = { lat: Number(data.latitude), lng: Number(data.longitude) };
+                } else {
+                  const lat = Number(data.latitude);
+                  const lng = Number(data.longitude);
+                  if (data.latitude != null && data.longitude != null && Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && (lat !== 0 || lng !== 0)) {
+                    newLocations[data.id] = { lat, lng };
+                  }
                 }
               } catch (geoError) {
-                if (data.latitude != null && data.longitude != null) {
-                  newLocations[data.id] = { lat: Number(data.latitude), lng: Number(data.longitude) };
+                const lat = Number(data.latitude);
+                const lng = Number(data.longitude);
+                if (data.latitude != null && data.longitude != null && Number.isFinite(lat) && Number.isFinite(lng) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180 && (lat !== 0 || lng !== 0)) {
+                  newLocations[data.id] = { lat, lng };
                 }
               }
               newPrepTimes[data.id] = data.estimated_preparation_time || 30;
@@ -307,6 +310,12 @@ const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
               return updated;
             });
           }
+          if (pingData?.length) {
+            setRestaurantDataLoaded(prev => ({
+              ...prev,
+              ...Object.fromEntries(pingData.map((restaurant: any) => [restaurant.id, true]))
+            }));
+          }
 
         } catch (checkError: any) {
           // console.error('[Checkout] ❌ Connection check failed:', checkError.message);
@@ -318,7 +327,7 @@ const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
     };
 
     fetchRestaurantData();
-  }, [cartRestaurantIds, restaurantLocations, restaurantNames]);
+  }, [cartRestaurantIds, restaurantDataLoaded]);
 
 const loadSavedAddresses = async () => {
   try {

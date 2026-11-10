@@ -12,8 +12,10 @@
  */
 
 import { supabase } from './supabase';
+import Constants from 'expo-constants';
 
-const LOCATION_IQ_TOKEN = process.env.EXPO_PUBLIC_LOCATION_IQ_TOKEN || '';
+const LOCATION_IQ_TOKEN = process.env.EXPO_PUBLIC_LOCATION_IQ_TOKEN ||
+  Constants.expoConfig?.extra?.locationIqKey || 'pk.ac03476010699238dcadcb4f0eb9a998';
 
 // In-memory cache for geocoded addresses
 const geocodeCache = new Map<string, { latitude: number; longitude: number; timestamp: number }>();
@@ -96,6 +98,7 @@ const enforceRateLimit = async () => {
  */
 const geocodeWithLocationIQ = async (address: string): Promise<{ latitude: number; longitude: number } | null> => {
   try {
+    if (!LOCATION_IQ_TOKEN) return null;
 
     // Try standard endpoint first
     let geocodeUrl = `https://locationiq.com/v1/search.php?key=${LOCATION_IQ_TOKEN}&q=${encodeURIComponent(address)}&format=json&limit=1`;
@@ -167,7 +170,8 @@ const getFallbackCoordinates = (address: string): { latitude: number; longitude:
  */
 export const geocodeAddress = async (
   address: string,
-  useCache: boolean = true
+  useCache: boolean = true,
+  allowFallback: boolean = true
 ): Promise<{ latitude: number; longitude: number } | null> => {
   if (!address || typeof address !== 'string') {
     // console.warn('[Geocoding] Invalid address:', address);
@@ -184,6 +188,7 @@ export const geocodeAddress = async (
 
   // Check if we've had too many consecutive failures
   if (consecutiveFailures >= MAX_FAILURES) {
+    if (!allowFallback) return null;
     // console.warn('[Geocoding] Too many consecutive failures, using fallback');
     const fallback = getFallbackCoordinates(address);
     consecutiveFailures = 0;
@@ -202,7 +207,7 @@ export const geocodeAddress = async (
     if (!coords) {
       consecutiveFailures++;
       // console.warn(`[Geocoding] LocationIQ failed (failure ${consecutiveFailures}/${MAX_FAILURES})`);
-      coords = getFallbackCoordinates(address);
+      if (allowFallback) coords = getFallbackCoordinates(address);
     } else {
       // Success - reset failure counter and cache result
       consecutiveFailures = 0;
@@ -213,7 +218,7 @@ export const geocodeAddress = async (
   } catch (error) {
     // console.error('[Geocoding] Unexpected error:', error);
     consecutiveFailures++;
-    return getFallbackCoordinates(address);
+    return allowFallback ? getFallbackCoordinates(address) : null;
   }
 };
 
