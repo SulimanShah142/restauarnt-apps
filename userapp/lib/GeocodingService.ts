@@ -12,10 +12,10 @@
  */
 
 import { supabase } from './supabase';
-import Constants from 'expo-constants';
 
-const LOCATION_IQ_TOKEN = process.env.EXPO_PUBLIC_LOCATION_IQ_TOKEN ||
-  Constants.expoConfig?.extra?.locationIqKey || 'pk.ac03476010699238dcadcb4f0eb9a998';
+// Public LocationIQ key from userapp/app.config.js. Read it directly here because
+// process.env and Expo Constants are not reliably populated in this native runtime.
+const LOCATION_IQ_TOKEN = 'pk.ac03476010699238dcadcb4f0eb9a998';
 
 // In-memory cache for geocoded addresses
 const geocodeCache = new Map<string, { latitude: number; longitude: number; timestamp: number }>();
@@ -100,14 +100,14 @@ const geocodeWithLocationIQ = async (address: string): Promise<{ latitude: numbe
   try {
     if (!LOCATION_IQ_TOKEN) return null;
 
-    // Try standard endpoint first
-    let geocodeUrl = `https://locationiq.com/v1/search.php?key=${LOCATION_IQ_TOKEN}&q=${encodeURIComponent(address)}&format=json&limit=1`;
+    // LocationIQ's documented forward-geocoding endpoint.
+    let geocodeUrl = `https://us1.locationiq.com/v1/search?key=${LOCATION_IQ_TOKEN}&q=${encodeURIComponent(address)}&format=json&limit=1`;
 
     let response = await fetch(geocodeUrl);
 
     // If the standard endpoint fails, try the EU endpoint
     if (!response.ok && response.status !== 429) {
-      geocodeUrl = `https://eu1.locationiq.com/v1/search.php?key=${LOCATION_IQ_TOKEN}&q=${encodeURIComponent(address)}&format=json&limit=1`;
+      geocodeUrl = `https://eu1.locationiq.com/v1/search?key=${LOCATION_IQ_TOKEN}&q=${encodeURIComponent(address)}&format=json&limit=1`;
       response = await fetch(geocodeUrl);
     }
 
