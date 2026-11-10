@@ -5,6 +5,7 @@ import { useCart } from '../../contexts/CartContext';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Location from 'expo-location';
 import LocationPermissionPrompt from '../../components/LocationPermissionPrompt';
+import { supabase } from '../../lib/supabase';
 
 // Define types
 type Restaurant = {
@@ -135,6 +136,13 @@ export default function CartScreen() {
   const goToCheckout = async () => {
     if (cartState.items.length === 0) {
       Alert.alert('Cart is Empty', 'Please add items to your cart before proceeding to checkout.');
+      return;
+    }
+
+    // Check the persisted Supabase session directly before opening checkout.
+    const { data: { session: currentSession }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !currentSession?.user) {
+      router.push({ pathname: '/(auth)/sign-in', params: { redirectTo: 'checkout' } });
       return;
     }
 

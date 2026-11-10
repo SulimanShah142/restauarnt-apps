@@ -11,34 +11,35 @@ const TERMS_OF_SERVICE_URL = 'https://sites.google.com/view/ayar-terms-of-servic
 const DELETE_ACCOUNT_URL = 'https://sites.google.com/view/ayar-terms-of-service/delete-my-account';
 
 export default function SignUp() {
-    const [email, setEmail] = useState("");
+    const [identifier, setIdentifier] = useState("");
     const [name, setName] = useState("");
-    const [phone, setPhone] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [agreedToTerms, setAgreedToTerms] = useState(false);
     const router = useRouter();
 
-    console.log('[SignUp] Render - email:', email, 'name:', name, 'isLoading:', isLoading);
+    console.log('[SignUp] Render - name:', name, 'isLoading:', isLoading);
 
     const handleSignUp = async () => {
         console.log('[SignUp] handleSignUp called');
         
-        if (!email.trim()) {
-            console.log('[SignUp] Validation failed: empty email');
-            Alert.alert('Error', 'Please enter your email');
+        const value = identifier.trim();
+        const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+        const normalizedPhone = value.replace(/[\s()-]/g, '');
+        const isPhone = /^\+?\d{7,15}$/.test(normalizedPhone);
+        if (!value) {
+            Alert.alert('Required field', 'Enter your email address or phone number.');
+            return;
+        }
+        if (!isEmail && !isPhone) {
+            Alert.alert('Invalid email or phone', 'Enter a valid email address or phone number (7–15 digits).');
             return;
         }
 
         if (!name.trim()) {
             console.log('[SignUp] Validation failed: empty name');
             Alert.alert('Error', 'Please enter your name');
-            return;
-        }
-
-        if (!phone.trim()) {
-            Alert.alert('Error', 'Please enter your phone number');
             return;
         }
 
@@ -67,41 +68,34 @@ export default function SignUp() {
         console.log('[SignUp] Validation passed, starting signup...');
         setIsLoading(true);
         try {
-            console.log('[SignUp] Calling supabase.auth.signUp...');
-            const normalizedPhone = phone.trim().replace(/[\s()-]/g, '');
-            const { data, error } = await supabase.auth.signUp({
-                email: email.trim(),
-                password,
-                options: { data: { full_name: name.trim(), phone: normalizedPhone } },
-            });
-
-            if (error) {
-                console.error('[SignUp] Supabase error:', error);
-                throw error;
+            if (isEmail) {
+                const { error } = await supabase.auth.signUp({
+                    email: value.toLowerCase(),
+                    password,
+                    options: { data: { full_name: name.trim() } },
+                });
+                if (error) throw error;
+            } else {
+                const { data, error } = await supabase.functions.invoke('phone-password-signup', {
+                    body: { phone: normalizedPhone, password, fullName: name.trim() },
+                });
+                if (error) {
+                    let message = error.message;
+                    try { message = (await (error as any).context?.json())?.error || message; } catch { /* keep SDK message */ }
+                    throw new Error(message);
+                }
+                if (!data?.success) throw new Error(data?.error || 'Could not create account.');
             }
 
-            // Save to profiles when Supabase returns an active session. For email-confirmation
-            // signups, the auth trigger can read phone from user metadata after the migration below.
-            if (data.session && data.user) {
-                const { error: profileError } = await supabase.from('profiles').upsert({
-                    id: data.user.id,
-                    full_name: name.trim(),
-                    email: email.trim(),
-                    phone: normalizedPhone,
-                } as any);
-                if (profileError) throw profileError;
-            }
-
-            console.log('[SignUp] ✅ Auth signup success, user_id:', data.user?.id);
+            console.log('[SignUp] Account creation completed');
 
             // Clear form
-            setEmail('');
+            setIdentifier('');
             setName('');
-            setPhone('');
             setPassword('');
 
             // Navigate to sign-in - user will verify email and log in
-            console.log('[SignUp] Navigating to sign-in for email verification');
+            Alert.alert('Account created', isEmail ? 'Check your email to confirm your account, then sign in.' : 'Your account is ready. Sign in with your phone number and password.');
             try {
                 router.push('/(auth)/sign-in');
             } catch (error) {
@@ -142,24 +136,13 @@ export default function SignUp() {
 
                         <TextInput
                             style={styles.input}
-                            placeholder="Email"
+                            placeholder="Email or Phone Number"
                             placeholderTextColor="#999999"
-                            value={email}
-                            onChangeText={setEmail}
-                            keyboardType="email-address"
+                            value={identifier}
+                            onChangeText={setIdentifier}
+                            keyboardType="default"
                             autoCapitalize="none"
                             autoComplete="email"
-                            editable={!isLoading}
-                        />
-
-                        <TextInput
-                            style={styles.input}
-                            placeholder="Phone Number"
-                            placeholderTextColor="#999999"
-                            value={phone}
-                            onChangeText={setPhone}
-                            keyboardType="phone-pad"
-                            autoComplete="tel"
                             editable={!isLoading}
                         />
 

@@ -217,7 +217,8 @@ export default function OrderDetailsScreen() {
         deliveryLongitude: orderData.delivery_lng,
         is_completed: orderData.is_completed,
         completed_at: orderData.completed_at,
-        rejection_reason: orderData.rejection_reason  // Added rejection reason
+        rejection_reason: orderData.rejection_reason,
+        cancellation_reason: orderData.cancellation_reason
       };
 
       // DEBUG: Log coordinates to see what's being passed
@@ -417,14 +418,14 @@ export default function OrderDetailsScreen() {
           </Text>
         </View>
 
-        {/* Rejection Reason - Show if order was rejected */}
-        {order.status === 'rejected' && order.rejection_reason ? (
+        {/* Admin-provided rejection or cancellation reason */}
+        {(order.status === 'rejected' && order.rejection_reason) || (order.status === 'cancelled' && order.cancellation_reason) ? (
           <View style={styles.rejectionReasonCard}>
             <View style={styles.rejectionReasonHeader}>
               <Ionicons name="alert-circle" size={24} color="#C41E26" />
-              <Text style={styles.rejectionReasonTitle}>Rejection Reason</Text>
+              <Text style={styles.rejectionReasonTitle}>{order.status === 'rejected' ? 'Rejection Reason' : 'Cancellation Reason'}</Text>
             </View>
-            <Text style={styles.rejectionReasonText}>{order.rejection_reason}</Text>
+            <Text style={styles.rejectionReasonText}>{order.status === 'rejected' ? order.rejection_reason : order.cancellation_reason}</Text>
           </View>
         ) : null}
 

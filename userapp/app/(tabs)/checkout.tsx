@@ -89,6 +89,9 @@ const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
   const [restaurantNames, setRestaurantNames] = useState<Record<string, string>>({});
   const [restaurantLocations, setRestaurantLocations] = useState<Record<string, { lat: number; lng: number }>>({});
   const [restaurantPrepTimes, setRestaurantPrepTimes] = useState<Record<string, number>>({});
+  const cartRestaurantIds = useMemo(() => [...new Set((cart || []).map(item =>
+    item?.restaurantId || item?.foodItem?.restaurantId
+  ).filter(Boolean))] as string[], [cart]);
 
   // Function to get restaurant name by ID
   const getRestaurantName = (cartItem: CartItem) => {
@@ -221,19 +224,13 @@ const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
       return;
     }
 
-    const restaurantIds = [...new Set(cart.map(item => {
-      const id = item?.restaurantId || item?.foodItem?.restaurantId;
-      return id;
-    }))].filter(Boolean) as string[];
-
-
     const fetchRestaurantData = async () => {
       const newNames: Record<string, string> = {};
       const newLocations: Record<string, { lat: number; lng: number }> = {};
       const newPrepTimes: Record<string, number> = {};
 
       // Check which restaurants we already have data for
-      const missingIds = restaurantIds.filter(id => {
+      const missingIds = cartRestaurantIds.filter(id => {
         const hasData = id && restaurantLocations[id] && restaurantNames[id];
         if (hasData) {
           return false;
@@ -253,7 +250,7 @@ const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
           // Try a lightweight connectivity check
           const { data: pingData, error: pingError } = await supabase
             .from('restaurants')
-            .select('id, name, address, latitude, longitude')
+            .select('id, name, address, latitude, longitude, estimated_preparation_time')
             .in('id', missingIds)
             .returns<any[]>();
 
@@ -271,34 +268,21 @@ const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
             for (const data of pingData) {
               newNames[data.id] = data.name || `Restaurant ${data.id}`;
 
-              if (data.latitude && data.longitude) {
-                // FIX: Database has latitude/longitude swapped - correct it here
-                const lat = Number(data.longitude);  // Actually longitude in DB
-                const lng = Number(data.latitude);   // Actually latitude in DB
-                newLocations[data.id] = { lat, lng };
-                // Get preparation time (default 30 min if not set)
-                newPrepTimes[data.id] = data.estimated_preparation_time || 30;
-                // Restaurant has address but no coordinates - geocode it
-                try {
-                  const geocoded = await geocodeAddress(data.address);
-                  if (geocoded) {
-                    newLocations[data.id] = { lat: geocoded.latitude, lng: geocoded.longitude };
-
-                    // Update database with correct coordinates
-                    await (supabase as any)
-                      .from('restaurants')
-                      .update({
-                        latitude: geocoded.latitude,
-                        longitude: geocoded.longitude
-                      })
-                      .eq('id', data.id);
-                  }
-                } catch (geoError) {
-                  // console.warn(`[Checkout] ⚠️ Geocoding failed for restaurant ${data.id}:`, geoError);
+              // Checkout map location comes from geocoding the selected restaurant's
+              // database address; stored coordinates are only a fallback.
+              try {
+                const geocoded = data.address ? await geocodeAddress(data.address) : null;
+                if (geocoded) {
+                  newLocations[data.id] = { lat: geocoded.latitude, lng: geocoded.longitude };
+                } else if (data.latitude != null && data.longitude != null) {
+                  newLocations[data.id] = { lat: Number(data.latitude), lng: Number(data.longitude) };
                 }
-              } else {
-                // console.warn('[Checkout] ⚠️ Restaurant missing coordinates and address:', data.id);
+              } catch (geoError) {
+                if (data.latitude != null && data.longitude != null) {
+                  newLocations[data.id] = { lat: Number(data.latitude), lng: Number(data.longitude) };
+                }
               }
+              newPrepTimes[data.id] = data.estimated_preparation_time || 30;
             }
           }
 
@@ -334,7 +318,7 @@ const [selectedAddressId, setSelectedAddressId] = useState<string | null>(null);
     };
 
     fetchRestaurantData();
-  }, [cart?.length]); // Only depend on length to avoid infinite loops
+  }, [cartRestaurantIds, restaurantLocations, restaurantNames]);
 
 const loadSavedAddresses = async () => {
   try {
@@ -479,7 +463,7 @@ useEffect(() => {
     if (sessionError || !currentSession?.user) {
       // console.error('No session user found:', sessionError);
       Alert.alert('Error', 'You must be logged in to place an order');
-      router.replace('/(auth)/sign-in');
+      router.replace({ pathname: '/(auth)/sign-in', params: { redirectTo: 'checkout' } });
       router.refresh()
       return;
     }

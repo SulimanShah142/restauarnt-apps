@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { View, TextInput, StyleSheet, Alert, ActivityIndicator, ScrollView, KeyboardAvoidingView, Platform, TouchableOpacity, Text, Linking } from "react-native";
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRouter, useRootNavigation } from 'expo-router';
+import { useRouter, useRootNavigation, useLocalSearchParams } from 'expo-router';
 import { supabase } from '../../lib/supabase';
 import { Ionicons } from '@expo/vector-icons';
 import { syncOneSignalTokens } from '../../utils/onesignal';
@@ -13,15 +13,14 @@ const TERMS_OF_SERVICE_URL = 'https://sites.google.com/view/ayar-terms-of-servic
 const DELETE_ACCOUNT_URL = 'https://sites.google.com/view/ayar-terms-of-service/delete-my-account';
 
 export default function SignIn() {
-    const [email, setEmail] = useState("");
-    const [phone, setPhone] = useState("");
-    const [phoneLogin, setPhoneLogin] = useState(false);
+    const [identifier, setIdentifier] = useState("");
     const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [isLoading, setIsLoading] = useState(false);
     const [agreedToTerms, setAgreedToTerms] = useState(false);
     const [isNavigationReady, setIsNavigationReady] = useState(false);
     const router = useRouter();
+    const { redirectTo } = useLocalSearchParams<{ redirectTo?: string }>();
     const rootNavigation = useRootNavigation();
 
     // Check if navigation is ready
@@ -32,10 +31,16 @@ export default function SignIn() {
     }, [rootNavigation]);
 
     const handleLogin = async () => {
-        console.log('[SignIn] Login attempt for:', email);
-
-        if (!email.trim()) {
-            Alert.alert('Error', 'Please enter your email');
+        const value = identifier.trim();
+        const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+        const normalizedPhone = value.replace(/[\s()-]/g, '');
+        const isPhone = /^\+?\d{7,15}$/.test(normalizedPhone);
+        if (!value) {
+            Alert.alert('Required field', 'Enter your email address or phone number.');
+            return;
+        }
+        if (!isEmail && !isPhone) {
+            Alert.alert('Invalid email or phone', 'Enter a valid email address or phone number (7–15 digits).');
             return;
         }
 
@@ -55,10 +60,28 @@ export default function SignIn() {
 
         setIsLoading(true);
         try {
-            const { data, error } = await supabase.auth.signInWithPassword({
-                email,
-                password,
-            });
+            let error: any = null;
+            if (isEmail) {
+                const result = await supabase.auth.signInWithPassword({ email: value.toLowerCase(), password });
+                error = result.error;
+            } else {
+                const result = await supabase.functions.invoke('phone-password-login', {
+                    body: { phone: normalizedPhone, password },
+                });
+                if (result.error) {
+                    let message = result.error.message;
+                    try { message = (await (result.error as any).context?.json())?.error || message; } catch { /* retain SDK message */ }
+                    throw new Error(message);
+                }
+                if (!result.data?.session?.access_token || !result.data?.session?.refresh_token) {
+                    throw new Error(result.data?.error || 'Phone or password is incorrect.');
+                }
+                const sessionResult = await supabase.auth.setSession({
+                    access_token: result.data.session.access_token,
+                    refresh_token: result.data.session.refresh_token,
+                });
+                error = sessionResult.error;
+            }
 
             if (error) {
                 console.error('[SignIn] Supabase error:', error);
@@ -66,11 +89,10 @@ export default function SignIn() {
             }
 
             console.log('[SignIn] Success!');
-            console.log('[SignIn] Has session:', !!data.session);
-            console.log('[SignIn] User ID:', data.user?.id);
+            console.log('[SignIn] Credentials accepted');
 
             // Clear form fields
-            setEmail('');
+            setIdentifier('');
             setPassword('');
 
             // Wait for session to persist to AsyncStorage
@@ -134,7 +156,7 @@ export default function SignIn() {
                 // AuthContext's onAuthStateChange fires synchronously after signInWithPassword,
                 // so auth state is already updated by the time we navigate
                 console.log('[SignIn] Navigating to auth-check...');
-                router.replace('/auth-check');
+                router.replace(redirectTo === 'checkout' ? '/(tabs)/checkout' : '/auth-check');
             } else {
                 console.error('[SignIn] No session found after login!');
                 Alert.alert('Error', 'Login succeeded but no session found. Please try again.');
@@ -143,55 +165,6 @@ export default function SignIn() {
             console.error('[SignIn] Error:', error);
             console.error('[SignIn] Error message:', error.message);
             Alert.alert('Login Error', error.message || 'Failed to login');
-        } finally {
-            setIsLoading(false);
-        }
-    };
-
-    const handlePhoneLogin = async () => {
-        const normalizedPhone = phone.trim().replace(/[\s()-]/g, '');
-        if (!normalizedPhone) {
-            Alert.alert('Error', 'Please enter your phone number');
-            return;
-        }
-        if (!agreedToTerms) {
-            Alert.alert('Terms Acceptance Required', 'Please accept the Terms of Service and Privacy Policy to continue.');
-            return;
-        }
-        setIsLoading(true);
-        try {
-            const { data, error } = await supabase.functions.invoke('phone-password-login', {
-                body: { phone: normalizedPhone, password },
-            });
-            if (error) {
-                let message = error.message || 'Phone sign-in request failed.';
-                const response = (error as any).context;
-                if (response && typeof response.json === 'function') {
-                    try {
-                        const details = await response.json();
-                        if (typeof details?.error === 'string') message = details.error;
-                    } catch {
-                        // Keep the SDK message if the response is not JSON.
-                    }
-                }
-                throw new Error(message);
-            }
-            if (!data?.session?.access_token || !data?.session?.refresh_token) {
-                throw new Error('Phone or password is incorrect.');
-            }
-            const { data: sessionData, error: sessionError } = await supabase.auth.setSession({
-                access_token: data.session.access_token,
-                refresh_token: data.session.refresh_token,
-            });
-            if (sessionError) throw sessionError;
-            const user = sessionData.user;
-            if (!user) throw new Error('Could not establish a sign-in session.');
-            await AsyncStorage.setItem('user_id', user.id);
-            await supabase.from('profiles').upsert({ id: user.id, phone: normalizedPhone } as any);
-            syncOneSignalTokens().catch((err) => console.error('[SignIn] Push token registration failed:', err));
-            router.replace('/auth-check');
-        } catch (error: any) {
-            Alert.alert('Phone Sign In Error', error.message || 'Unable to sign in with this phone number');
         } finally {
             setIsLoading(false);
         }
@@ -209,39 +182,19 @@ export default function SignIn() {
                         <Text style={styles.title}>Welcome Back</Text>
                         <Text style={styles.subtitle}>Sign in to continue</Text>
 
-                        <TouchableOpacity onPress={() => setPhoneLogin(!phoneLogin)} disabled={isLoading}>
-                            <Text style={styles.signUpLink}>{phoneLogin ? 'Sign in with email instead' : 'Sign in with phone number'}</Text>
-                        </TouchableOpacity>
-
-                        {phoneLogin ? (
-                            <>
-                                <TextInput style={styles.input} placeholder="Phone Number" placeholderTextColor="#999999" value={phone} onChangeText={setPhone} keyboardType="phone-pad" autoComplete="tel" editable={!isLoading} />
-                                <View style={styles.passwordContainer}>
-                                    <TextInput style={styles.passwordInput} placeholder="Password" placeholderTextColor="#999999" value={password} onChangeText={setPassword} secureTextEntry={!showPassword} autoComplete="password" editable={!isLoading} />
-                                    <TouchableOpacity style={styles.visibilityButton} onPress={() => setShowPassword(!showPassword)} disabled={isLoading}>
-                                        <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={20} color="#666" />
-                                    </TouchableOpacity>
-                                </View>
-                                <TouchableOpacity style={[styles.button, isLoading && styles.buttonDisabled, !agreedToTerms && styles.buttonDisabled]} onPress={handlePhoneLogin} disabled={isLoading || !agreedToTerms}>
-                                    {isLoading ? <ActivityIndicator color="#fff" /> : <Text style={styles.buttonText}>Sign In</Text>}
-                                </TouchableOpacity>
-                            </>
-                        ) : <>
-
                         <TextInput
                             style={styles.input}
-                            placeholder="Email"
+                            placeholder="Email or Phone Number"
                             placeholderTextColor="#999999"
-                            value={email}
-                            onChangeText={setEmail}
-                            keyboardType="email-address"
+                            value={identifier}
+                            onChangeText={setIdentifier}
+                            keyboardType="default"
                             autoCapitalize="none"
                             autoComplete="email"
                             editable={!isLoading}
                         />
 
-                        </>}
-                        {!phoneLogin && <View style={styles.passwordContainer}>
+                        <View style={styles.passwordContainer}>
                             <TextInput
                                 style={styles.passwordInput}
                                 placeholder="Password"
@@ -263,7 +216,7 @@ export default function SignIn() {
                                     color="#666"
                                 />
                             </TouchableOpacity>
-                        </View>}
+                        </View>
 
                         {/* Terms of Service Checkbox */}
                         <View style={styles.termsContainer}>
@@ -295,7 +248,7 @@ export default function SignIn() {
                             </TouchableOpacity>
                         </View>
 
-                        {!phoneLogin && <TouchableOpacity
+                        <TouchableOpacity
                             style={[styles.button, isLoading && styles.buttonDisabled, !agreedToTerms && styles.buttonDisabled]}
                             onPress={handleLogin}
                             disabled={isLoading || !agreedToTerms}
@@ -307,7 +260,7 @@ export default function SignIn() {
                                     Sign In
                                 </Text>
                             )}
-                        </TouchableOpacity>}
+                        </TouchableOpacity>
 
 
   <TouchableOpacity

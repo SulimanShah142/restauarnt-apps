@@ -38,6 +38,8 @@ export interface Order {
   };
   restaurantId?: string;
   restaurantName?: string;
+  rejectionReason?: string;
+  cancellationReason?: string;
   items?: OrderItem[];
 }
 
@@ -99,6 +101,8 @@ export const ordersServiceWithCache = {
             restaurantLocation: undefined,
             restaurantId: order.restaurant_id,
             restaurantName: order.restaurant_name,
+            rejectionReason: order.rejection_reason || undefined,
+            cancellationReason: order.cancellation_reason || undefined,
             items,
           } as Order;
         })
@@ -154,6 +158,8 @@ export const ordersServiceWithCache = {
             restaurantLocation: undefined,
             restaurantId: order.restaurant_id,
             restaurantName: order.restaurants?.name || order.restaurant_name || 'Restaurant',
+            rejectionReason: order.rejection_reason || undefined,
+            cancellationReason: order.cancellation_reason || undefined,
             items: order.order_items?.map((item: any) => ({
               id: item.id,
               orderId: item.order_id || order.id,
@@ -269,6 +275,8 @@ export const ordersServiceWithCache = {
         deliveryAddress: data.delivery_address,
         restaurantId: data.restaurant_id,
         restaurantName: data.restaurant_name,
+        rejectionReason: data.rejection_reason || undefined,
+        cancellationReason: data.cancellation_reason || undefined,
         items: (data.order_items || []).map((item: any) => ({
           id: item.id,
           orderId: item.order_id,
@@ -343,13 +351,14 @@ async function performBackgroundOrdersSync(userId: string) {
              (id, user_id, restaurant_id, subtotal, delivery_cost, total_amount,
               delivery_address, delivery_notes, delivery_lat, delivery_lng,
               restaurant_name, payment_method, payment_status, status,
-              estimated_delivery_time, created_at, updated_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+              rejection_reason, cancellation_reason, estimated_delivery_time, created_at, updated_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
             [
               order.id, order.user_id, order.restaurant_id,
               order.subtotal, order.delivery_cost, order.total_amount,
               order.delivery_address, order.delivery_notes, order.delivery_lat, order.delivery_lng,
               order.restaurants?.name || order.restaurant_name, order.payment_method, order.payment_status, order.status,
+              order.rejection_reason, order.cancellation_reason,
               order.estimated_delivery_time, order.created_at, order.updated_at
             ]
           );
@@ -397,6 +406,8 @@ async function performBackgroundOrdersSync(userId: string) {
           payment_method: order.payment_method,
           payment_status: order.payment_status,
           status: order.status,
+          rejection_reason: order.rejection_reason,
+          cancellation_reason: order.cancellation_reason,
           estimated_delivery_time: order.estimated_delivery_time,
           created_at: order.created_at,
           updated_at: order.updated_at,

@@ -179,6 +179,13 @@ export default function UserOrdersScreen() {
           </View>
         </View>
 
+        {(item.status === 'rejected' && item.rejectionReason) || (item.status === 'cancelled' && item.cancellationReason) ? (
+          <View style={styles.reasonNotice}>
+            <Text style={styles.reasonNoticeTitle}>{item.status === 'rejected' ? 'Rejection reason' : 'Cancellation reason'}</Text>
+            <Text style={styles.reasonNoticeText}>{item.status === 'rejected' ? item.rejectionReason : item.cancellationReason}</Text>
+          </View>
+        ) : null}
+
         {/* Restaurant Name */}
         {item.restaurantName && (
           <Text style={styles.restaurantName}>{item.restaurantName}</Text>
@@ -423,6 +430,22 @@ const styles = StyleSheet.create({
   statusText: {
     fontSize: Typography.fontSize.xs,
     fontWeight: Typography.fontWeight.semibold,
+  },
+  reasonNotice: {
+    backgroundColor: '#FFF1F0',
+    borderRadius: BorderRadius.md,
+    padding: Spacing.sm,
+    marginBottom: Spacing.sm,
+  },
+  reasonNoticeTitle: {
+    color: '#C41E26',
+    fontSize: Typography.fontSize.sm,
+    fontWeight: Typography.fontWeight.semibold,
+    marginBottom: 2,
+  },
+  reasonNoticeText: {
+    color: Colors.textPrimary,
+    fontSize: Typography.fontSize.sm,
   },
   restaurantName: {
     fontSize: Typography.fontSize.md,
